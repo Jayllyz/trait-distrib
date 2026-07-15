@@ -1,0 +1,18 @@
+[project]
+name = "trait-distrib"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "pyspark>=4.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.21",
+    "ty>=0.0.59",
+]
+
+[tool.ty.rules]
+unresolved-attribute = "ignore"

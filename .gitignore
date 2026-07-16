@@ -17,3 +17,6 @@ wheels/
 .env
 .idea
 .coverage
+
+# Kaggle datasets
+digit-recognizer/

@@ -8,6 +8,12 @@ PySpark project managed with uv.
 just install
 ```
 
+The app downloads the [digit-recognizer](https://www.kaggle.com/competitions/digit-recognizer/data)
+dataset via `kagglehub`, which requires Kaggle API credentials. Either place a
+`kaggle.json` token in `~/.kaggle/kaggle.json` or set the `KAGGLE_USERNAME` and
+`KAGGLE_KEY` environment variables (see
+[Kaggle API docs](https://www.kaggle.com/docs/api)).
+
 ## Run
 
 ```bash

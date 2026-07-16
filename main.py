@@ -1,4 +1,10 @@
+import os
+import sys
+
 from pyspark.sql import SparkSession
+
+
+os.environ["PYSPARK_PYTHON"] = sys.executable
 
 
 def main() -> None:

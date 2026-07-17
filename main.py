@@ -1,21 +1,29 @@
 import os
 import sys
 
-import kagglehub
 from pyspark.sql import SparkSession
 
 
 os.environ["PYSPARK_PYTHON"] = sys.executable
 
-COMPETITION = "digit-recognizer"
+DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "digit-recognizer")
 
 
 def fetch_dataset() -> str:
-    return kagglehub.competition_download(COMPETITION)
+    if not os.path.isdir(DATASET_DIR):
+        raise FileNotFoundError(f"Dataset directory not found: {DATASET_DIR}")
+    train_csv = os.path.join(DATASET_DIR, "train.csv")
+    if not os.path.isfile(train_csv):
+        raise FileNotFoundError(f"Dataset file not found: {train_csv}")
+    return DATASET_DIR
 
 
 def main() -> None:
-    dataset_path = fetch_dataset()
+    try:
+        dataset_path = fetch_dataset()
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     spark = (
         SparkSession.builder.appName("trait-distrib").master("local[1]").getOrCreate()

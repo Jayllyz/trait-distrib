@@ -21,13 +21,16 @@ install:
     uv sync --all-packages
 
 run:
-    uv run main.py
+    uv run src/main.py
 
 preprocess:
-    uv run preprocessing.py
+    uv run src/preprocessing.py
 
 train:
-    uv run training.py
+    uv run src/training.py
+
+streamlit:
+    uv run streamlit run streamlit_app.py
 
 lint:
     uv run ruff check --fix .

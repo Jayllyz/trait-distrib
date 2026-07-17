@@ -8,15 +8,23 @@ dependencies = [
     "kagglehub>=1.0.2",
     "matplotlib>=3.10.0",
     "numpy>=2.2.0",
+    "opencv-python-headless>=4.10.0.84",
+    "pillow>=11.0.0",
     "pyspark>=4.2.0",
     "seaborn>=0.13.2",
+    "streamlit>=1.40.0",
 ]
 
 [dependency-groups]
 dev = [
+    "pytest>=8.3.0",
     "ruff>=0.15.22",
     "ty>=0.0.60",
 ]
 
 [tool.ty.rules]
 unresolved-attribute = "ignore"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider"

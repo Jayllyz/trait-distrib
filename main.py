@@ -6,7 +6,9 @@ from pyspark.sql import SparkSession
 
 os.environ["PYSPARK_PYTHON"] = sys.executable
 
-DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "digit-recognizer")
+DATASET_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "digit-recognizer"
+)
 
 
 def fetch_dataset() -> str:

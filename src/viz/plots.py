@@ -5,11 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from config import PLOTS_DIR
-
-
-def ensure_dirs():
-    os.makedirs(PLOTS_DIR, exist_ok=True)
+from src.config import PLOTS_DIR
+from src.viz.digits import ensure_dirs, plot_digit
 
 
 def get_sorted_pixel_names_from_dicts(data, key_prefix="pixel"):
@@ -22,17 +19,6 @@ def get_sorted_pixel_names_from_dicts(data, key_prefix="pixel"):
         key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 0
     )
     return keys
-
-
-def plot_digit(pixels, title=None, ax=None):
-    img = np.array(pixels).reshape(28, 28)
-    if ax is None:
-        fig, ax = plt.subplots()
-    ax.imshow(img, cmap="gray")
-    ax.axis("off")
-    if title:
-        ax.set_title(title)
-    return ax
 
 
 def save_frequency_plot(freq_data):
@@ -124,33 +110,6 @@ def save_variance_map(variance_data):
     plt.axis("off")
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, "variance_map.png"), dpi=150)
-    plt.close()
-
-
-def save_sample_images(df, num_samples=10):
-    """Prend un DataFrame Spark, prélève un échantillon et affiche les images."""
-    ensure_dirs()
-    sample_df = df.sample(fraction=0.001, seed=42).limit(num_samples)
-    if sample_df.count() == 0:
-        print("Avertissement : aucun échantillon prélevé.")
-        return
-    sample_pd = (
-        sample_df.toPandas()
-    )  # on utilise pandas juste pour l'échantillon (petit)
-    pixel_cols = [c for c in sample_pd.columns if c != "label"]
-    pixel_cols.sort(
-        key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 0
-    )
-    fig, axes = plt.subplots(2, 5, figsize=(12, 6))
-    for idx, (_, row) in enumerate(sample_pd.iterrows()):
-        if idx >= num_samples:
-            break
-        label = int(row["label"])
-        pixels = row[pixel_cols].values.astype(float)
-        ax = axes[idx // 5, idx % 5]
-        plot_digit(pixels, title=f"Label: {label}", ax=ax)
-    plt.tight_layout()
-    plt.savefig(os.path.join(PLOTS_DIR, "sample_images.png"), dpi=150)
     plt.close()
 
 

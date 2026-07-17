@@ -8,11 +8,8 @@ from pyspark.sql.functions import max as spark_max
 from pyspark.sql.functions import min as spark_min
 from pyspark.sql.functions import sum as spark_sum
 
-from config import STATS_DIR
-
-
-def ensure_dirs():
-    os.makedirs(STATS_DIR, exist_ok=True)
+from src.config import STATS_DIR
+from src.stats.storage import ensure_dirs
 
 
 def get_sorted_pixel_cols(df: DataFrame):
@@ -22,9 +19,6 @@ def get_sorted_pixel_cols(df: DataFrame):
         key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 0
     )
     return cols
-
-
-# ---------- Calculs et sauvegardes ----------
 
 
 def compute_and_save_frequencies(df: DataFrame):
@@ -102,55 +96,3 @@ def compute_and_save_variance_map(df: DataFrame):
         writer = csv.DictWriter(f, fieldnames=["pixel", "std"])
         writer.writeheader()
         writer.writerows(data)
-
-
-# ---------- Chargement ----------
-
-
-def load_frequencies():
-    data = []
-    with open(os.path.join(STATS_DIR, "frequencies.csv"), "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            data.append({"label": int(row["label"]), "count": int(row["count"])})
-    return data
-
-
-def load_pixel_stats():
-    data = []
-    with open(os.path.join(STATS_DIR, "pixel_stats.csv"), "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            data.append(
-                {
-                    "pixel": row["pixel"],
-                    "mean": float(row["mean"]),
-                    "std": float(row["std"]),
-                    "min": float(row["min"]),
-                    "max": float(row["max"]),
-                    "zeros": int(row["zeros"]),
-                }
-            )
-    return data
-
-
-def load_mean_by_label():
-    data = []
-    with open(os.path.join(STATS_DIR, "mean_by_label.csv"), "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            d = {"label": int(row["label"])}
-            for k, v in row.items():
-                if k != "label":
-                    d[k] = float(v)
-            data.append(d)
-    return data
-
-
-def load_variance_map():
-    data = []
-    with open(os.path.join(STATS_DIR, "variance_map.csv"), "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            data.append({"pixel": row["pixel"], "std": float(row["std"])})
-    return data

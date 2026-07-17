@@ -4,7 +4,6 @@ import argparse
 import csv
 import os
 import time
-from dataclasses import asdict
 
 import numpy as np
 from pyspark.ml.classification import (
@@ -17,7 +16,7 @@ from pyspark.mllib.evaluation import MulticlassMetrics
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 
-from config import CLASSIFIER_MODELS_DIR, DATASET_DIR, METRICS_DIR, OUTPUT_DIR
+from config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
 from preprocessing import (
     DEFAULT_EMPTY_PIXEL_THRESHOLD,
     DEFAULT_PCA_COMPONENTS,

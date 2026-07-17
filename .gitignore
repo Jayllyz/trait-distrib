@@ -13,6 +13,11 @@ wheels/
 *.ropeproject
 *.pkl
 .ruff_cache/
+.pytest_cache/
+.pytest-tmp/
+.test-temp/
+.uv-cache/
+pytest-cache-files-*/
 *.png
 .env
 .idea
@@ -21,4 +26,3 @@ wheels/
 digit-recognizer/
 # Output files
 output/
-

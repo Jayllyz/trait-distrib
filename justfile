@@ -23,6 +23,9 @@ install:
 run:
     uv run main.py
 
+streamlit:
+    uv run streamlit run streamlit_app.py
+
 lint:
     uv run ruff check --fix .
 

@@ -8,7 +8,7 @@ from pyspark.sql.functions import max as spark_max
 from pyspark.sql.functions import min as spark_min
 from pyspark.sql.functions import sum as spark_sum
 
-from config import STATS_DIR
+from src.config import STATS_DIR
 
 
 def ensure_dirs():

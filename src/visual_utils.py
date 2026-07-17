@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from config import PLOTS_DIR
+from src.config import PLOTS_DIR
 
 
 def ensure_dirs():

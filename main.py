@@ -1,25 +1,15 @@
 import os
 import sys
 
-from pyspark.sql import SparkSession
-
 import stats_utils
 import visual_utils
-from config import DATASET_DIR, FORCE_RECOMPUTE_STATS, OUTPUT_DIR, PLOTS_DIR, STATS_DIR
+from config import FORCE_RECOMPUTE_STATS, OUTPUT_DIR, PLOTS_DIR, STATS_DIR
+from src.data_loader import fetch_dataset, get_spark, load_train
 
 
-def fetch_dataset() -> str:
-    if not os.path.isdir(DATASET_DIR):
-        raise FileNotFoundError(f"Dataset directory not found: {DATASET_DIR}")
-    train_csv = os.path.join(DATASET_DIR, "train.csv")
-    if not os.path.isfile(train_csv):
-        raise FileNotFoundError(f"Dataset file not found: {train_csv}")
-    return DATASET_DIR
-
-
-def main():
+def main() -> None:
     try:
-        dataset_path = fetch_dataset()
+        fetch_dataset()
     except FileNotFoundError as e:
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -28,12 +18,8 @@ def main():
     os.makedirs(STATS_DIR, exist_ok=True)
     os.makedirs(PLOTS_DIR, exist_ok=True)
 
-    spark = (
-        SparkSession.builder.appName("trait-distrib").master("local[1]").getOrCreate()
-    )
-    train_df = spark.read.csv(
-        os.path.join(dataset_path, "train.csv"), header=True, inferSchema=True
-    )
+    spark = get_spark()
+    train_df = load_train(spark).cache()
 
     stats_files_exist = all(
         os.path.exists(os.path.join(STATS_DIR, f))

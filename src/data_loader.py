@@ -5,7 +5,7 @@ import sys
 
 from pyspark.sql import DataFrame, SparkSession
 
-from config import DATASET_DIR
+from src.config import DATASET_DIR
 
 
 def get_spark(app_name: str = "trait-distrib") -> SparkSession:

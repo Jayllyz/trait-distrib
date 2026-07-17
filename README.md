@@ -20,6 +20,34 @@ dataset via `kagglehub`, which requires Kaggle API credentials. Either place a
 just run
 ```
 
+## Preprocess
+
+Run the Spark preprocessing workflow for step 3 with feature assembly,
+normalization, pixel filtering, and PCA experiments:
+
+```bash
+just preprocess
+```
+
+The generated artifacts are written under `output/`:
+
+* `output/preprocessing/` for transformed datasets
+* `output/models/` for fitted preprocessing pipelines
+* `output/metrics/preprocessing_summary.csv` for the configuration comparison
+
+## Train
+
+Run the step 4 machine-learning workflow and display the comparison table in the
+terminal:
+
+```bash
+just train
+```
+
+The workflow evaluates several Spark ML models, saves the comparison metrics,
+exports the best model, and writes the confusion matrix plus class-level metrics
+under `output/metrics/`.
+
 ## Lint, format & typecheck
 
 ```bash

@@ -8,4 +8,4 @@ STATS_DIR = os.path.join(OUTPUT_DIR, "stats")
 PLOTS_DIR = os.path.join(OUTPUT_DIR, "plots")
 
 # Si True, recalcule les statistiques même si elles existent déjà
-FORCE_RECOMPUTE_STATS = True
+FORCE_RECOMPUTE_STATS = False

@@ -63,9 +63,19 @@ maximum. Elle recadre l'écriture, sépare les cinq chiffres et produit cinq ima
 MNIST de 28 × 28 pixels.
 
 Par défaut, `PREDICTOR_MODE=demo` : la segmentation est réelle, mais le code et
-les confiances sont simulés et signalés comme tels dans l'interface. Le futur
-adaptateur du modèle devra implémenter le contrat `Predictor` de
-`postal_app/predictor.py`, puis être sélectionné avec `PREDICTOR_MODE=spark`.
+les confiances sont simulés et signalés comme tels dans l'interface.
+
+Le mode réel charge le pipeline de prétraitement PCA et le Random Forest présents
+dans `output/models` :
+
+```bash
+PREDICTOR_MODE=spark just streamlit
+```
+
+Les chemins peuvent être remplacés avec `SPARK_PREPROCESSING_MODEL_PATH` et
+`SPARK_CLASSIFIER_MODEL_PATH`. Les chemins relatifs sont résolus depuis la racine
+du projet. Le mode réel est supporté dans l'image Docker Linux ; sous Windows,
+utiliser Docker évite la dépendance Hadoop native à `winutils.exe`.
 
 ## Déploiement Coolify
 
@@ -75,7 +85,8 @@ Le `Dockerfile` expose le port `8501` et inclut un contrôle de santé sur
 1. Créer une ressource Coolify depuis ce dépôt avec le build Dockerfile.
 2. Définir le port du conteneur sur `8501`.
 3. Associer un domaine HTTPS à la ressource.
-4. Conserver `PREDICTOR_MODE=demo` tant que l'adaptateur Spark n'est pas ajouté.
+4. Définir `PREDICTOR_MODE=spark` pour activer le modèle entraîné, ou conserver
+   `demo` pour tester uniquement le parcours utilisateur.
 
 Les images sont traitées en mémoire par Streamlit et ne sont pas enregistrées
 par l'application.
@@ -93,6 +104,7 @@ just check      # lint + format + typecheck
 
 ```bash
 just test
+just test-spark # test d'intégration des artefacts, à exécuter sous Linux/Docker
 ```
 
 ## Clean

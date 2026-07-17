@@ -1,8 +1,7 @@
 import os
 import sys
 
-import stats_utils
-import visual_utils
+from src import stats_utils, visual_utils
 from src.config import FORCE_RECOMPUTE_STATS, OUTPUT_DIR, PLOTS_DIR, STATS_DIR
 from src.data_loader import fetch_dataset, get_spark, load_train
 

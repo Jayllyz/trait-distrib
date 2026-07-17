@@ -4,7 +4,7 @@ import argparse
 import csv
 import os
 import time
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from pyspark.ml.classification import (
@@ -14,7 +14,8 @@ from pyspark.ml.classification import (
 )
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.mllib.evaluation import MulticlassMetrics
-from pyspark.sql import DataFrame, SparkSession
+from pyspark import RDD
+from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col
 
 from src.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
@@ -110,7 +111,7 @@ def build_classifiers() -> list[tuple[str, Any]]:
 
 def compute_class_metrics(predictions: DataFrame) -> list[dict[str, Any]]:
     metrics = MulticlassMetrics(
-        predictions.select("prediction", "label").rdd.map(
+        cast("RDD[Row]", predictions.select("prediction", "label").rdd).map(
             lambda row: (float(row[0]), float(row[1]))
         )
     )
@@ -131,7 +132,7 @@ def compute_class_metrics(predictions: DataFrame) -> list[dict[str, Any]]:
 
 def compute_confusion_matrix(predictions: DataFrame) -> np.ndarray:
     metrics = MulticlassMetrics(
-        predictions.select("prediction", "label").rdd.map(
+        cast("RDD[Row]", predictions.select("prediction", "label").rdd).map(
             lambda row: (float(row[0]), float(row[1]))
         )
     )
@@ -157,7 +158,7 @@ def save_class_metrics(rows: list[dict[str, Any]], path: str) -> None:
         writer.writerows(rows)
 
 
-def save_model_comparison(rows: list[dict[str, object]]) -> None:
+def save_model_comparison(rows: list[dict[str, Any]]) -> None:
     comparison_path = os.path.join(METRICS_DIR, "model_comparison.csv")
     if not rows:
         return
@@ -169,7 +170,7 @@ def save_model_comparison(rows: list[dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
-def print_table(rows: list[dict[str, object]]) -> None:
+def print_table(rows: list[dict[str, Any]]) -> None:
     headers = [
         "model",
         "accuracy",
@@ -184,7 +185,7 @@ def print_table(rows: list[dict[str, object]]) -> None:
         for header in headers:
             widths[header] = max(widths[header], len(str(row[header])))
 
-    def format_row(row: dict[str, object]) -> str:
+    def format_row(row: dict[str, Any]) -> str:
         return " | ".join(str(row[header]).ljust(widths[header]) for header in headers)
 
     print()
@@ -216,7 +217,7 @@ def train_and_evaluate_models(
         labelCol="label", predictionCol="prediction", metricName="weightedRecall"
     )
 
-    results: list[dict[str, object]] = []
+    results: list[dict[str, Any]] = []
     models: dict[str, Any] = {}
 
     for model_name, estimator in build_classifiers():
@@ -280,7 +281,7 @@ def train_and_evaluate_models(
     return results, models
 
 
-def pick_best_model(rows: list[dict[str, object]]) -> dict[str, object]:
+def pick_best_model(rows: list[dict[str, Any]]) -> dict[str, Any]:
     successful_rows = [row for row in rows if row["status"] == "ok"]
     if not successful_rows:
         failures = "; ".join(str(row["status"]) for row in rows)

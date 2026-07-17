@@ -20,3 +20,6 @@ wheels/
 
 # Kaggle datasets
 digit-recognizer/
+
+# Output files
+output/

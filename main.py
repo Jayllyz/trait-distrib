@@ -24,12 +24,10 @@ def main():
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Créer les dossiers de sortie
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(STATS_DIR, exist_ok=True)
     os.makedirs(PLOTS_DIR, exist_ok=True)
 
-    # Initialiser Spark
     spark = (
         SparkSession.builder.appName("trait-distrib").master("local[1]").getOrCreate()
     )
@@ -37,7 +35,6 @@ def main():
         os.path.join(dataset_path, "train.csv"), header=True, inferSchema=True
     )
 
-    # Vérifier l'existence des fichiers de stats
     stats_files_exist = all(
         os.path.exists(os.path.join(STATS_DIR, f))
         for f in [

@@ -59,9 +59,11 @@ def save_global_mean_plot(pixel_stats_data):
         return
     # Trier par pixel
     pixel_stats_data.sort(
-        key=lambda x: int(re.search(r"\d+", x["pixel"]).group())
-        if re.search(r"\d+", x["pixel"])
-        else 0
+        key=lambda x: (
+            int(re.search(r"\d+", x["pixel"]).group())
+            if re.search(r"\d+", x["pixel"])
+            else 0
+        )
     )
     means = [d["mean"] for d in pixel_stats_data]
     if len(means) != 784:
@@ -104,9 +106,11 @@ def save_variance_map(variance_data):
         print("Avertissement : données variance vides.")
         return
     variance_data.sort(
-        key=lambda x: int(re.search(r"\d+", x["pixel"]).group())
-        if re.search(r"\d+", x["pixel"])
-        else 0
+        key=lambda x: (
+            int(re.search(r"\d+", x["pixel"]).group())
+            if re.search(r"\d+", x["pixel"])
+            else 0
+        )
     )
     stds = [d["std"] for d in variance_data]
     if len(stds) != 784:

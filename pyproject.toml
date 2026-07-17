@@ -6,13 +6,16 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "kagglehub>=1.0.2",
+    "matplotlib>=3.10.0",
+    "numpy>=2.2.0",
     "pyspark>=4.2.0",
+    "seaborn>=0.13.2",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.21",
-    "ty>=0.0.59",
+    "ruff>=0.15.22",
+    "ty>=0.0.60",
 ]
 
 [tool.ty.rules]

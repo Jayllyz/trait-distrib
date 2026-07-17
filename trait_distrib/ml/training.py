@@ -18,9 +18,9 @@ from pyspark import RDD
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col
 
-from src.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
-from src.spark.session import get_spark
-from src.ml.preprocessing import (
+from trait_distrib.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
+from trait_distrib.spark.session import get_spark
+from trait_distrib.ml.preprocessing import (
     DEFAULT_EMPTY_PIXEL_THRESHOLD,
     DEFAULT_PCA_COMPONENTS,
     PreprocessingConfig,

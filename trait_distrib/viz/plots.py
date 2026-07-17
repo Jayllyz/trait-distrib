@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from src.config import PLOTS_DIR
-from src.viz.digits import ensure_dirs, plot_digit
+from trait_distrib.config import PLOTS_DIR
+from trait_distrib.viz.digits import ensure_dirs, plot_digit
 
 
 def get_sorted_pixel_names_from_dicts(data, key_prefix="pixel"):

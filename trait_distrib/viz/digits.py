@@ -4,7 +4,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.config import PLOTS_DIR
+from trait_distrib.config import PLOTS_DIR
 
 
 def ensure_dirs():

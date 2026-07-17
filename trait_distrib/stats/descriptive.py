@@ -8,8 +8,8 @@ from pyspark.sql.functions import max as spark_max
 from pyspark.sql.functions import min as spark_min
 from pyspark.sql.functions import sum as spark_sum
 
-from src.config import STATS_DIR
-from src.stats.storage import ensure_dirs
+from trait_distrib.config import STATS_DIR
+from trait_distrib.stats.storage import ensure_dirs
 
 
 def get_sorted_pixel_cols(df: DataFrame):

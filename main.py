@@ -1,11 +1,11 @@
 import os
 import sys
 
-from src.config import FORCE_RECOMPUTE_STATS, OUTPUT_DIR, PLOTS_DIR, STATS_DIR
-from src.spark.io import fetch_dataset, load_train
-from src.spark.session import get_spark
-from src.stats import descriptive, storage
-from src.viz import digits, plots
+from trait_distrib.config import FORCE_RECOMPUTE_STATS, OUTPUT_DIR, PLOTS_DIR, STATS_DIR
+from trait_distrib.spark.io import fetch_dataset, load_train
+from trait_distrib.spark.session import get_spark
+from trait_distrib.stats import descriptive, storage
+from trait_distrib.viz import digits, plots
 
 
 def main() -> None:

@@ -39,9 +39,9 @@ def ensure_output_dirs() -> None:
 def get_pixel_columns(df: DataFrame) -> list[str]:
     pixel_columns = [column for column in df.columns if column != "label"]
     pixel_columns.sort(
-        key=lambda column: int(PIXEL_RE.search(column).group(1))
-        if PIXEL_RE.search(column)
-        else 0
+        key=lambda column: (
+            int(PIXEL_RE.search(column).group(1)) if PIXEL_RE.search(column) else 0
+        )
     )
     return pixel_columns
 
@@ -57,9 +57,9 @@ def read_digit_csv(spark: SparkSession, csv_path: str, has_label: bool) -> DataF
     pixel_columns = [column for column in raw_df.columns if column != "label"]
     ordered_columns = (["label"] if has_label else []) + sorted(
         pixel_columns,
-        key=lambda column: int(PIXEL_RE.search(column).group(1))
-        if PIXEL_RE.search(column)
-        else 0,
+        key=lambda column: (
+            int(PIXEL_RE.search(column).group(1)) if PIXEL_RE.search(column) else 0
+        ),
     )
 
     casted_columns = []
@@ -110,7 +110,9 @@ def build_pipeline(
 ) -> Pipeline:
     stages = []
 
-    assembler_output = "features" if (not normalize and pca_components is None) else "raw_features"
+    assembler_output = (
+        "features" if (not normalize and pca_components is None) else "raw_features"
+    )
     stages.append(
         VectorAssembler(
             inputCols=pixel_columns,
@@ -229,8 +231,12 @@ def run_configuration(
         "test_output_columns": test_columns,
         "duration_seconds": round(duration_seconds, 3),
         "model_path": model_path,
-        "train_output_path": os.path.join(PREPROCESSING_DIR, config.name, "train.parquet"),
-        "test_output_path": os.path.join(PREPROCESSING_DIR, config.name, "test.parquet"),
+        "train_output_path": os.path.join(
+            PREPROCESSING_DIR, config.name, "train.parquet"
+        ),
+        "test_output_path": os.path.join(
+            PREPROCESSING_DIR, config.name, "test.parquet"
+        ),
     }
 
 
@@ -249,9 +255,11 @@ def save_summary(rows: list[dict[str, object]]) -> None:
 def run_preprocessing_workflow() -> None:
     ensure_output_dirs()
 
-    spark = SparkSession.builder.appName("trait-distrib-preprocessing").master(
-        "local[1]"
-    ).getOrCreate()
+    spark = (
+        SparkSession.builder.appName("trait-distrib-preprocessing")
+        .master("local[1]")
+        .getOrCreate()
+    )
     spark.sparkContext.setLogLevel("WARN")
 
     train_df, test_df = read_train_test_frames(spark)
@@ -292,7 +300,9 @@ def run_preprocessing_workflow() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the Spark preprocessing workflow.")
+    parser = argparse.ArgumentParser(
+        description="Run the Spark preprocessing workflow."
+    )
     parser.parse_args()
     run_preprocessing_workflow()
 

@@ -110,8 +110,9 @@ def build_classifiers(feature_dimension: int):
 
 def compute_class_metrics(predictions: DataFrame) -> list[dict[str, float]]:
     metrics = MulticlassMetrics(
-        predictions.select("prediction", "label")
-        .rdd.map(lambda row: (float(row[0]), float(row[1])))
+        predictions.select("prediction", "label").rdd.map(
+            lambda row: (float(row[0]), float(row[1]))
+        )
     )
 
     class_metrics = []
@@ -130,8 +131,9 @@ def compute_class_metrics(predictions: DataFrame) -> list[dict[str, float]]:
 
 def compute_confusion_matrix(predictions: DataFrame) -> np.ndarray:
     metrics = MulticlassMetrics(
-        predictions.select("prediction", "label")
-        .rdd.map(lambda row: (float(row[0]), float(row[1])))
+        predictions.select("prediction", "label").rdd.map(
+            lambda row: (float(row[0]), float(row[1]))
+        )
     )
     return metrics.confusionMatrix().toArray()
 
@@ -148,7 +150,9 @@ def save_confusion_matrix(matrix: np.ndarray, path: str) -> None:
 def save_class_metrics(rows: list[dict[str, float]], path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["label", "precision", "recall", "f1"])
+        writer = csv.DictWriter(
+            handle, fieldnames=["label", "precision", "recall", "f1"]
+        )
         writer.writeheader()
         writer.writerows(rows)
 
@@ -166,7 +170,15 @@ def save_model_comparison(rows: list[dict[str, object]]) -> None:
 
 
 def print_table(rows: list[dict[str, object]]) -> None:
-    headers = ["model", "accuracy", "f1", "weighted_precision", "weighted_recall", "train_s", "eval_s"]
+    headers = [
+        "model",
+        "accuracy",
+        "f1",
+        "weighted_precision",
+        "weighted_recall",
+        "train_s",
+        "eval_s",
+    ]
     widths = {header: len(header) for header in headers}
     for row in rows:
         for header in headers:
@@ -188,7 +200,9 @@ def print_table(rows: list[dict[str, object]]) -> None:
     print()
 
 
-def train_and_evaluate_models(train_df: DataFrame, val_df: DataFrame, feature_dimension: int):
+def train_and_evaluate_models(
+    train_df: DataFrame, val_df: DataFrame, feature_dimension: int
+):
     evaluator_accuracy = MulticlassClassificationEvaluator(
         labelCol="label", predictionCol="prediction", metricName="accuracy"
     )
@@ -289,16 +303,20 @@ def run_machine_learning_workflow(sample_fraction: float) -> None:
     ensure_output_dirs()
     ensure_classifier_dirs()
 
-    spark = SparkSession.builder.appName("trait-distrib-machine-learning").master(
-        "local[1]"
-    ).getOrCreate()
+    spark = (
+        SparkSession.builder.appName("trait-distrib-machine-learning")
+        .master("local[1]")
+        .getOrCreate()
+    )
     spark.sparkContext.setLogLevel("WARN")
 
     prepared_df = load_or_build_preprocessed_train_frame(spark)
     if not 0 < sample_fraction <= 1:
         raise ValueError("sample_fraction must be in the (0, 1] interval")
 
-    working_df = prepared_df.sample(withReplacement=False, fraction=sample_fraction, seed=42)
+    working_df = prepared_df.sample(
+        withReplacement=False, fraction=sample_fraction, seed=42
+    )
     working_df = working_df.cache()
     working_df.count()
 
@@ -327,7 +345,9 @@ def run_machine_learning_workflow(sample_fraction: float) -> None:
     )
     print(f"Modèle sauvegardé: {best_model_path}")
     print(f"Résultats détaillés: {os.path.join(METRICS_DIR, 'model_comparison.csv')}")
-    print(f"Matrice de confusion: {os.path.join(METRICS_DIR, f'confusion_matrix_{best_model_name}.csv')}")
+    print(
+        f"Matrice de confusion: {os.path.join(METRICS_DIR, f'confusion_matrix_{best_model_name}.csv')}"
+    )
     print(
         f"Métriques par classe: {os.path.join(METRICS_DIR, f'class_metrics_{best_model_name}.csv')}"
     )

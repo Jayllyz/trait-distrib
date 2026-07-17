@@ -4,6 +4,7 @@ import argparse
 import csv
 import os
 import time
+from typing import Any
 
 import numpy as np
 from pyspark.ml.classification import (
@@ -16,8 +17,8 @@ from pyspark.mllib.evaluation import MulticlassMetrics
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 
-from config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
-from preprocessing import (
+from src.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
+from src.preprocessing import (
     DEFAULT_EMPTY_PIXEL_THRESHOLD,
     DEFAULT_PCA_COMPONENTS,
     PreprocessingConfig,
@@ -62,7 +63,7 @@ def get_feature_dimension(df: DataFrame) -> int:
     return int(sample_row[0]["features"].size)
 
 
-def build_classifiers(feature_dimension: int):
+def build_classifiers() -> list[tuple[str, Any]]:
     return [
         (
             "logistic_regression",
@@ -107,7 +108,7 @@ def build_classifiers(feature_dimension: int):
     ]
 
 
-def compute_class_metrics(predictions: DataFrame) -> list[dict[str, float]]:
+def compute_class_metrics(predictions: DataFrame) -> list[dict[str, Any]]:
     metrics = MulticlassMetrics(
         predictions.select("prediction", "label").rdd.map(
             lambda row: (float(row[0]), float(row[1]))
@@ -146,7 +147,7 @@ def save_confusion_matrix(matrix: np.ndarray, path: str) -> None:
             writer.writerow([index] + [int(value) for value in row])
 
 
-def save_class_metrics(rows: list[dict[str, float]], path: str) -> None:
+def save_class_metrics(rows: list[dict[str, Any]], path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", newline="") as handle:
         writer = csv.DictWriter(
@@ -216,9 +217,9 @@ def train_and_evaluate_models(
     )
 
     results: list[dict[str, object]] = []
-    models: dict[str, object] = {}
+    models: dict[str, Any] = {}
 
-    for model_name, estimator in build_classifiers(feature_dimension):
+    for model_name, estimator in build_classifiers():
         print(f"[training] Fitting {model_name}...")
         start_train = time.perf_counter()
         try:
@@ -291,7 +292,7 @@ def pick_best_model(rows: list[dict[str, object]]) -> dict[str, object]:
     )[0]
 
 
-def save_best_model(model, model_name: str) -> str:
+def save_best_model(model: Any, model_name: str) -> str:
     model_path = os.path.join(CLASSIFIER_MODELS_DIR, f"best_{model_name}")
     os.makedirs(model_path, exist_ok=True)
     model.write().overwrite().save(model_path)
@@ -320,6 +321,7 @@ def run_machine_learning_workflow(sample_fraction: float) -> None:
     working_df.count()
 
     feature_dimension = get_feature_dimension(working_df)
+    print(f"[training] Feature dimension: {feature_dimension}")
 
     train_df, val_df = working_df.randomSplit([0.8, 0.2], seed=42)
     train_df.cache()

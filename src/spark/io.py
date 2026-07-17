@@ -2,7 +2,7 @@ import os
 
 from pyspark.sql import DataFrame, SparkSession
 
-from trait_distrib.config import DATASET_DIR
+from src.config import DATASET_DIR
 
 
 def fetch_dataset() -> str:

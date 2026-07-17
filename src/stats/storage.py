@@ -1,7 +1,7 @@
 import csv
 import os
 
-from trait_distrib.config import STATS_DIR
+from src.config import STATS_DIR
 
 
 def ensure_dirs():

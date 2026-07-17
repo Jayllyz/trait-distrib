@@ -12,8 +12,8 @@ from pyspark.ml.feature import MinMaxScaler, PCA, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, sum as spark_sum, when
 
-from trait_distrib.spark.session import get_spark
-from trait_distrib.config import (
+from src.spark.session import get_spark
+from src.config import (
     DATASET_DIR,
     METRICS_DIR,
     MODELS_DIR,

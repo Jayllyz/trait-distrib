@@ -24,10 +24,10 @@ run:
     uv run main.py
 
 preprocess:
-    uv run -m trait_distrib.ml.preprocessing
+    uv run -m src.ml.preprocessing
 
 train:
-    uv run -m trait_distrib.ml.training
+    uv run -m src.ml.training
 
 lint:
     uv run ruff check --fix .

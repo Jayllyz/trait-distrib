@@ -23,6 +23,12 @@ install:
 run:
     uv run main.py
 
+preprocess:
+    uv run -m src.ml.preprocessing
+
+train:
+    uv run -m src.ml.training
+
 lint:
     uv run ruff check --fix .
 

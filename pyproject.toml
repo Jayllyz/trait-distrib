@@ -28,3 +28,6 @@ unresolved-attribute = "ignore"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 addopts = "-p no:cacheprovider"
+markers = [
+    "spark: integration tests that load the persisted Spark artifacts",
+]

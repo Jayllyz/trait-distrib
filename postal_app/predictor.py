@@ -1,8 +1,11 @@
-"""Prediction contract and explicit demonstration implementation."""
+"""Prediction contract and demonstration and Spark implementations."""
 
+from functools import lru_cache
 import hashlib
 import os
-from typing import Protocol
+from pathlib import Path
+from threading import Lock
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -13,8 +16,12 @@ class PredictorConfigurationError(RuntimeError):
     """Raised when the selected prediction backend is unavailable."""
 
 
+class PredictionError(RuntimeError):
+    """Raised when a configured backend cannot complete an inference."""
+
+
 class Predictor(Protocol):
-    """Contract that the future Spark model adapter must implement."""
+    """Contract shared by prediction backends."""
 
     @property
     def is_demo(self) -> bool: ...
@@ -42,6 +49,70 @@ class DemoPredictor:
         return tuple(predictions)
 
 
+class SparkPredictor:
+    """Adapter from five MNIST-like images to persisted Spark ML models."""
+
+    is_demo = False
+
+    def __init__(
+        self,
+        spark: Any,
+        preprocessing_model: Any,
+        classifier_model: Any,
+    ) -> None:
+        self._spark = spark
+        self._preprocessing_model = preprocessing_model
+        self._classifier_model = classifier_model
+
+    def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]:
+        _validate_batch(digits)
+        columns = ["_position", *(f"pixel{index}" for index in range(28 * 28))]
+        rows = [
+            (position, *(float(value) for value in digit_image.reshape(-1)))
+            for position, digit_image in enumerate(digits)
+        ]
+
+        try:
+            frame = self._spark.createDataFrame(rows, schema=columns)
+            prepared = self._preprocessing_model.transform(frame)
+            predictions = self._classifier_model.transform(prepared)
+            result_rows = (
+                predictions.select("_position", "prediction", "probability")
+                .orderBy("_position")
+                .collect()
+            )
+        except Exception as error:
+            raise PredictionError(
+                "Le modèle Spark n'a pas pu analyser les chiffres."
+            ) from error
+
+        if len(result_rows) != 5:
+            raise PredictionError(
+                "Le modèle Spark n'a pas retourné les cinq prédictions attendues."
+            )
+
+        converted: list[DigitPrediction] = []
+        for row in result_rows:
+            digit = int(row["prediction"])
+            if not 0 <= digit <= 9:
+                raise PredictionError("Le modèle Spark a retourné un chiffre invalide.")
+            probability = row["probability"]
+            try:
+                confidence = float(probability[digit])
+                converted.append(DigitPrediction(digit=digit, confidence=confidence))
+            except (IndexError, KeyError, TypeError, ValueError) as error:
+                raise PredictionError(
+                    "Le modèle Spark a retourné une probabilité invalide."
+                ) from error
+        return tuple(converted)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_PREPROCESSING_MODEL_PATH = Path("output/models/normalized_compact_pca")
+DEFAULT_CLASSIFIER_MODEL_PATH = Path("output/models/classifiers/best_random_forest")
+_SPARK_PREDICTOR_LOCK = Lock()
+
+
 def get_predictor(mode: str | None = None) -> Predictor:
     """Build the configured backend without silently falling back to demo mode."""
 
@@ -49,13 +120,73 @@ def get_predictor(mode: str | None = None) -> Predictor:
     if selected_mode == "demo":
         return DemoPredictor()
     if selected_mode in {"spark", "real"}:
-        raise PredictorConfigurationError(
-            "Le prédicteur Spark n'est pas encore configuré. "
-            "Ajoutez l'adaptateur du modèle avant d'utiliser PREDICTOR_MODE=spark."
+        preprocessing_path = _resolve_model_path(
+            os.getenv("SPARK_PREPROCESSING_MODEL_PATH"),
+            DEFAULT_PREPROCESSING_MODEL_PATH,
         )
+        classifier_path = _resolve_model_path(
+            os.getenv("SPARK_CLASSIFIER_MODEL_PATH"),
+            DEFAULT_CLASSIFIER_MODEL_PATH,
+        )
+        # lru_cache alone can evaluate the same missing key concurrently. The
+        # outer lock guarantees one JVM/model initialization for Streamlit.
+        with _SPARK_PREDICTOR_LOCK:
+            return _load_spark_predictor(preprocessing_path, classifier_path)
     raise PredictorConfigurationError(
         f"Mode de prédiction inconnu : {selected_mode!r}. Utilisez 'demo' ou 'spark'."
     )
+
+
+def _resolve_model_path(configured: str | None, default: Path) -> str:
+    path = Path(configured).expanduser() if configured else default
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return str(path.resolve())
+
+
+@lru_cache(maxsize=4)
+def _load_spark_predictor(
+    preprocessing_path: str,
+    classifier_path: str,
+) -> SparkPredictor:
+    missing_paths = [
+        path
+        for path in (preprocessing_path, classifier_path)
+        if not Path(path).is_dir()
+    ]
+    if missing_paths:
+        raise PredictorConfigurationError(
+            "Artefact(s) du modèle Spark introuvable(s) : " + ", ".join(missing_paths)
+        )
+
+    try:
+        from pyspark.ml import PipelineModel
+        from pyspark.ml.classification import RandomForestClassificationModel
+        from pyspark.sql import SparkSession
+
+        spark = (
+            SparkSession.builder.appName("trait-distrib-streamlit")
+            .master("local[1]")
+            .config("spark.ui.enabled", "false")
+            .config("spark.sql.shuffle.partitions", "1")
+            # Git can normalize line endings in Spark's JSON metadata without
+            # updating Hadoop's adjacent .crc files. These packaged artifacts
+            # are read-only, so checksum sidecars add no value at inference.
+            .config(
+                "spark.hadoop.fs.file.impl",
+                "org.apache.hadoop.fs.RawLocalFileSystem",
+            )
+            .getOrCreate()
+        )
+        spark.sparkContext.setLogLevel("WARN")
+        preprocessing_model = PipelineModel.load(preprocessing_path)
+        classifier_model = RandomForestClassificationModel.load(classifier_path)
+    except Exception as error:
+        raise PredictorConfigurationError(
+            "Impossible de charger les artefacts du modèle Spark."
+        ) from error
+
+    return SparkPredictor(spark, preprocessing_model, classifier_model)
 
 
 def analyze_digits(

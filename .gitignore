@@ -18,5 +18,3 @@ wheels/
 .idea
 .coverage
 
-# Kaggle datasets
-digit-recognizer/

@@ -1,4 +1,4 @@
 model,accuracy,f1,weighted_precision,weighted_recall,train_s,eval_s,status
-logistic_regression,0.868217,0.867983,0.869172,0.868217,5.393,0.959,ok
-decision_tree,0.73385,0.735228,0.740166,0.73385,5.351,0.401,ok
-random_forest,0.910853,0.910727,0.912329,0.910853,10.388,0.831,ok
+logistic_regression,0.867683,0.866648,0.869038,0.867683,2.269,0.161,ok
+decision_tree,0.77378,0.772748,0.774177,0.77378,1.354,0.097,ok
+random_forest,0.893293,0.893139,0.894176,0.893293,5.172,0.381,ok

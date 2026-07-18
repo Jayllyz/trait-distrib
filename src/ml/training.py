@@ -328,9 +328,7 @@ def run_machine_learning_workflow(sample_fraction: float) -> None:
         train_df.count()
         val_df.count()
 
-        results, models = train_and_evaluate_models(
-            train_df, val_df, feature_dimension
-        )
+        results, models = train_and_evaluate_models(train_df, val_df, feature_dimension)
         save_model_comparison(results)
         print_table(results)
 

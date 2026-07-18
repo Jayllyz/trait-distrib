@@ -2,8 +2,12 @@
 
 import hashlib
 import os
+from io import BytesIO
 
+import numpy as np
 import streamlit as st
+from PIL import Image
+from streamlit_drawable_canvas import st_canvas
 
 from postal_app.preprocessing import (
     ImageValidationError,
@@ -112,7 +116,7 @@ def _render_result(analysis, segments: tuple) -> None:
         st.success(f"**Décision : {analysis.decision}**")
 
     st.button(
-        "Prendre ou importer une nouvelle photo",
+        "Recommencer avec une nouvelle image",
         type="secondary",
         use_container_width=True,
         on_click=_reset_analysis,
@@ -148,27 +152,52 @@ with st.expander("Conseils pour une photo lisible", expanded=True):
 input_version = st.session_state.setdefault("input_version", 0)
 input_method = st.radio(
     "Source de l’image",
-    ("Prendre une photo", "Importer une image"),
+    ("Prendre une photo", "Importer une image", "Dessiner les chiffres"),
     horizontal=True,
 )
 
-uploaded = None
+image_bytes = None
+show_preview = True
 if input_method == "Prendre une photo":
     uploaded = st.camera_input(
         "Photographier le code postal",
         key=f"camera_{input_version}",
     )
-else:
+    if uploaded is not None:
+        image_bytes = uploaded.getvalue()
+elif input_method == "Importer une image":
     uploaded = st.file_uploader(
         "Choisir une image JPG ou PNG",
         type=("jpg", "jpeg", "png"),
         key=f"upload_{input_version}",
     )
+    if uploaded is not None:
+        image_bytes = uploaded.getvalue()
+else:
+    st.caption("Écrivez les cinq chiffres côte à côte, avec un petit espace entre eux.")
+    canvas = st_canvas(
+        stroke_width=16,
+        stroke_color="#000000",
+        background_color="#FFFFFF",
+        height=220,
+        width=680,
+        drawing_mode="freedraw",
+        key=f"canvas_{input_version}",
+    )
+    show_preview = False
+    if canvas.image_data is not None:
+        rgba = Image.fromarray(canvas.image_data.astype("uint8"), "RGBA")
+        white = Image.new("RGBA", rgba.size, "#FFFFFF")
+        drawing = Image.alpha_composite(white, rgba).convert("RGB")
+        if np.asarray(drawing.convert("L")).min() < 250:
+            buffer = BytesIO()
+            drawing.save(buffer, format="PNG")
+            image_bytes = buffer.getvalue()
 
-if uploaded is not None:
-    image_bytes = uploaded.getvalue()
+if image_bytes is not None:
     current_hash = hashlib.sha256(image_bytes).hexdigest()
-    st.image(image_bytes, caption="Image à analyser", use_container_width=True)
+    if show_preview:
+        st.image(image_bytes, caption="Image à analyser", use_container_width=True)
 
     if st.session_state.get("source_hash") != current_hash:
         for stale_key in ("analysis", "segments", "analysis_error"):

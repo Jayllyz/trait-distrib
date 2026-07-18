@@ -9,10 +9,7 @@ from pyspark.sql.functions import min as spark_min
 from pyspark.sql.functions import sum as spark_sum
 
 from src.config import STATS_DIR
-from src.spark.transformations import create_temp_view, filter_rows, run_sql
 from src.stats.storage import ensure_dirs
-
-CENTER_PIXEL = "pixel406"  # ligne 14, colonne 14 de l'image 28x28
 
 
 def get_sorted_pixel_cols(df: DataFrame):
@@ -24,36 +21,35 @@ def get_sorted_pixel_cols(df: DataFrame):
     return cols
 
 
-def run_sql_analysis(spark: SparkSession, df: DataFrame) -> list[dict]:
-    """Analyse via Spark SQL (vue temporaire + requêtes) et équivalent DataFrame."""
-    create_temp_view(df, "digits")
-    label_stats = run_sql(
-        spark,
-        f"SELECT label, COUNT(*) AS n, ROUND(AVG({CENTER_PIXEL}), 2) AS avg_center_ink "
-        "FROM digits GROUP BY label ORDER BY label",
+def run_map_reduce_analysis(df: DataFrame) -> list[tuple[int, int]]:
+    """MapReduce explicite sur l'API RDD : comptage des images par label."""
+    counts = (
+        df.rdd.map(lambda row: (row["label"], 1))
+        .reduceByKey(lambda a, b: a + b)
+        .sortByKey()
+        .collect()
     )
-    label_stats.show()
+    print("Comptage par label via RDD map/reduceByKey :", counts)
+    return counts
 
-    sql_inked = run_sql(
-        spark, f"SELECT COUNT(*) AS n FROM digits WHERE {CENTER_PIXEL} > 0"
+
+def run_sql_analysis(spark: SparkSession, df: DataFrame) -> tuple[int, int]:
+    """Spark SQL (vue temporaire + requêtes) et son équivalent DataFrame.
+
+    pixel406 est le pixel central de l'image 28x28 (ligne 14, colonne 14).
+    """
+    df.createOrReplaceTempView("digits")
+    spark.sql(
+        "SELECT label, COUNT(*) AS n, ROUND(AVG(pixel406), 2) AS avg_center_ink "
+        "FROM digits GROUP BY label ORDER BY label"
+    ).show()
+
+    sql_count = spark.sql(
+        "SELECT COUNT(*) AS n FROM digits WHERE pixel406 > 0"
     ).collect()[0]["n"]
-    df_inked = filter_rows(df, col(CENTER_PIXEL) > 0).count()
-    print(f"Images avec le pixel central encré : SQL={sql_inked}, DataFrame={df_inked}")
-
-    data = [
-        {
-            "label": int(row["label"]),
-            "n": int(row["n"]),
-            "avg_center_ink": float(row["avg_center_ink"]),
-        }
-        for row in label_stats.collect()
-    ]
-    ensure_dirs()
-    with open(os.path.join(STATS_DIR, "sql_label_stats.csv"), "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["label", "n", "avg_center_ink"])
-        writer.writeheader()
-        writer.writerows(data)
-    return data
+    df_count = df.filter(col("pixel406") > 0).count()
+    print(f"Images avec le pixel central encré : SQL={sql_count}, DataFrame={df_count}")
+    return sql_count, df_count
 
 
 def compute_and_save_frequencies(df: DataFrame):

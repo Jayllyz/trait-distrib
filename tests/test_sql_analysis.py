@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from src.stats import descriptive
+from src.stats.descriptive import run_map_reduce_analysis, run_sql_analysis
 
 
 pytestmark = [
@@ -14,7 +14,7 @@ pytestmark = [
 ]
 
 
-def test_run_sql_analysis_matches_dataframe_filter(tmp_path, monkeypatch) -> None:
+def test_sql_and_dataframe_filter_agree() -> None:
     from pyspark.sql import SparkSession
 
     spark = (
@@ -24,14 +24,11 @@ def test_run_sql_analysis_matches_dataframe_filter(tmp_path, monkeypatch) -> Non
     )
     df = spark.createDataFrame(
         [(0, 0), (0, 120), (1, 200), (1, 0), (1, 30)],
-        ["label", descriptive.CENTER_PIXEL],
+        ["label", "pixel406"],
     )
-    monkeypatch.setattr(descriptive, "STATS_DIR", str(tmp_path))
-    monkeypatch.setattr(descriptive, "ensure_dirs", lambda: None)
 
-    data = descriptive.run_sql_analysis(spark, df)
+    sql_count, df_count = run_sql_analysis(spark, df)
 
-    assert [row["label"] for row in data] == [0, 1]
-    assert [row["n"] for row in data] == [2, 3]
-    assert data[0]["avg_center_ink"] == 60.0
-    assert (tmp_path / "sql_label_stats.csv").exists()
+    assert sql_count == df_count == 3
+
+    assert run_map_reduce_analysis(df) == [(0, 2), (1, 3)]

@@ -302,7 +302,9 @@ def pick_best_model(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def save_best_model(model: Any, model_name: str) -> str:
-    model_path = os.path.join(CLASSIFIER_MODELS_DIR, f"{BEST_CLASSIFIER_PREFIX}{model_name}")
+    model_path = os.path.join(
+        CLASSIFIER_MODELS_DIR, f"{BEST_CLASSIFIER_PREFIX}{model_name}"
+    )
     os.makedirs(model_path, exist_ok=True)
     model.write().overwrite().save(model_path)
     with open(BEST_CLASSIFIER_MANIFEST, "w") as manifest:

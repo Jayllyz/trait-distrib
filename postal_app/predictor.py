@@ -5,7 +5,7 @@ import hashlib
 import os
 from pathlib import Path
 from threading import Lock
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 import numpy as np
 
@@ -108,7 +108,9 @@ class SparkPredictor:
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PREPROCESSING_MODEL_PATH = Path(MODELS_DIR) / PRODUCTION_PREPROCESSING_MODEL_NAME
+DEFAULT_PREPROCESSING_MODEL_PATH = (
+    Path(MODELS_DIR) / PRODUCTION_PREPROCESSING_MODEL_NAME
+)
 _SPARK_PREDICTOR_LOCK = Lock()
 
 
@@ -121,12 +123,11 @@ def get_predictor(mode: str | None = None) -> Predictor:
     if selected_mode in {"spark", "real"}:
         preprocessing_path = _resolve_model_path(
             os.getenv("SPARK_PREPROCESSING_MODEL_PATH"),
-            DEFAULT_PREPROCESSING_MODEL_PATH,
+            lambda: DEFAULT_PREPROCESSING_MODEL_PATH,
         )
-        configured_classifier_path = os.getenv("SPARK_CLASSIFIER_MODEL_PATH")
         classifier_path = _resolve_model_path(
-            configured_classifier_path,
-            None if configured_classifier_path else _default_classifier_model_path(),
+            os.getenv("SPARK_CLASSIFIER_MODEL_PATH"),
+            _default_classifier_model_path,
         )
         # lru_cache alone can evaluate the same missing key concurrently. The
         # outer lock guarantees one JVM/model initialization for Streamlit.
@@ -137,8 +138,8 @@ def get_predictor(mode: str | None = None) -> Predictor:
     )
 
 
-def _resolve_model_path(configured: str | None, default: Path) -> str:
-    path = Path(configured).expanduser() if configured else default
+def _resolve_model_path(configured: str | None, default: Callable[[], Path]) -> str:
+    path = Path(configured).expanduser() if configured else default()
     if not path.is_absolute():
         path = PROJECT_ROOT / path
     return str(path.resolve())
@@ -156,7 +157,9 @@ def _default_classifier_model_path() -> Path:
     return Path(CLASSIFIER_MODELS_DIR) / f"{BEST_CLASSIFIER_PREFIX}{model_name}"
 
 
-def _require_existing_model_paths(preprocessing_path: str, classifier_path: str) -> None:
+def _require_existing_model_paths(
+    preprocessing_path: str, classifier_path: str
+) -> None:
     missing_paths = [
         path
         for path in (preprocessing_path, classifier_path)
@@ -168,7 +171,9 @@ def _require_existing_model_paths(preprocessing_path: str, classifier_path: str)
         )
 
 
-def _build_spark_predictor(preprocessing_path: str, classifier_path: str) -> SparkPredictor:
+def _build_spark_predictor(
+    preprocessing_path: str, classifier_path: str
+) -> SparkPredictor:
     spark = None
     try:
         from pyspark.ml import PipelineModel

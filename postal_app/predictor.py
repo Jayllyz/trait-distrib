@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 import hashlib
+import logging
 import os
 from pathlib import Path
 from threading import Lock
@@ -10,6 +11,9 @@ from typing import Any, Protocol
 import numpy as np
 
 from postal_app.domain import DigitPrediction, PostalAnalysis
+
+
+logger = logging.getLogger(__name__)
 
 
 class PredictorConfigurationError(RuntimeError):
@@ -175,6 +179,11 @@ def _load_spark_predictor(
         preprocessing_model = PipelineModel.load(preprocessing_path)
         classifier_model = RandomForestClassificationModel.load(classifier_path)
     except Exception as error:
+        logger.exception(
+            "Failed to initialize the Spark predictor from preprocessing=%s and classifier=%s",
+            preprocessing_path,
+            classifier_path,
+        )
         raise PredictorConfigurationError(
             "Impossible de charger les artefacts du modèle Spark."
         ) from error

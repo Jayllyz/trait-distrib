@@ -152,6 +152,21 @@ def segment_postal_code(image_rgb: np.ndarray) -> tuple[DigitSegment, ...]:
     return tuple(segments)
 
 
+def thicken_segments(
+    segments: tuple[DigitSegment, ...],
+) -> tuple[DigitSegment, ...]:
+    """Slightly thicken normalized strokes with one symmetric dilation pass."""
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    return tuple(
+        DigitSegment(
+            image=cv2.dilate(segment.image, kernel, iterations=1),
+            bounding_box=segment.bounding_box,
+        )
+        for segment in segments
+    )
+
+
 def stack_segment_images(segments: tuple[DigitSegment, ...]) -> np.ndarray:
     """Build the model input batch from detected segments."""
 

@@ -986,13 +986,13 @@ dependencies = [
     { name = "numpy" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
+    { name = "pyspark" },
     { name = "seaborn" },
     { name = "streamlit" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "pyspark" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "ty" },
@@ -1005,13 +1005,13 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.0" },
     { name = "opencv-python-headless", specifier = ">=4.10.0.84" },
     { name = "pillow", specifier = ">=11.0.0" },
+    { name = "pyspark", specifier = ">=4.2.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "streamlit", specifier = ">=1.40.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pyspark", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.0" },
     { name = "ruff", specifier = ">=0.15.22" },
     { name = "ty", specifier = ">=0.0.60" },

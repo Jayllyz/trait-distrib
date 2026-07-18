@@ -11,6 +11,7 @@ from postal_app.preprocessing import (
     load_image,
     segment_postal_code,
     stack_segment_images,
+    thicken_segments,
 )
 from postal_app.predictor import (
     PredictionError,
@@ -68,7 +69,7 @@ st.markdown(
 
 def _reset_analysis() -> None:
     st.session_state["input_version"] = st.session_state.get("input_version", 0) + 1
-    for key in ("analysis", "segments", "source_hash", "analysis_error"):
+    for key in ("analysis", "segments", "analysis_key", "analysis_error"):
         st.session_state.pop(key, None)
 
 
@@ -170,7 +171,17 @@ if uploaded is not None:
     current_hash = hashlib.sha256(image_bytes).hexdigest()
     st.image(image_bytes, caption="Image à analyser", use_container_width=True)
 
-    if st.session_state.get("source_hash") != current_hash:
+    thicken_strokes = st.toggle(
+        "Épaissir légèrement les traits (expérimental)",
+        value=False,
+        help=(
+            "Applique une dilatation légère aux images 28 × 28 avant de les "
+            "envoyer au modèle. Comparez le résultat avec et sans cette option."
+        ),
+    )
+    current_analysis_key = f"{current_hash}:thicken={int(thicken_strokes)}"
+
+    if st.session_state.get("analysis_key") != current_analysis_key:
         for stale_key in ("analysis", "segments", "analysis_error"):
             st.session_state.pop(stale_key, None)
 
@@ -183,6 +194,8 @@ if uploaded is not None:
             with st.spinner("Détection et séparation des cinq chiffres…"):
                 image_rgb = load_image(image_bytes)
                 segments = segment_postal_code(image_rgb)
+                if thicken_strokes:
+                    segments = thicken_segments(segments)
                 batch = stack_segment_images(segments)
                 predictor = get_predictor(predictor_mode)
                 analysis = analyze_digits(
@@ -192,7 +205,7 @@ if uploaded is not None:
                 )
             st.session_state["analysis"] = analysis
             st.session_state["segments"] = segments
-            st.session_state["source_hash"] = current_hash
+            st.session_state["analysis_key"] = current_analysis_key
             st.session_state.pop("analysis_error", None)
         except (
             ImageValidationError,
@@ -201,26 +214,26 @@ if uploaded is not None:
             PredictorConfigurationError,
         ) as error:
             st.session_state["analysis_error"] = str(error)
-            st.session_state["source_hash"] = current_hash
+            st.session_state["analysis_key"] = current_analysis_key
             st.session_state.pop("analysis", None)
             st.session_state.pop("segments", None)
         except Exception:
             st.session_state["analysis_error"] = (
                 "Une erreur inattendue a interrompu l’analyse. Réessayez avec une autre photo."
             )
-            st.session_state["source_hash"] = current_hash
+            st.session_state["analysis_key"] = current_analysis_key
             st.session_state.pop("analysis", None)
             st.session_state.pop("segments", None)
 
     if (
         st.session_state.get("analysis_error")
-        and st.session_state.get("source_hash") == current_hash
+        and st.session_state.get("analysis_key") == current_analysis_key
     ):
         st.error(st.session_state["analysis_error"])
 
     if (
         st.session_state.get("analysis") is not None
-        and st.session_state.get("source_hash") == current_hash
+        and st.session_state.get("analysis_key") == current_analysis_key
     ):
         _render_result(
             st.session_state["analysis"],

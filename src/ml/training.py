@@ -18,7 +18,14 @@ from pyspark import RDD
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col
 
-from src.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
+from src.config import (
+    BEST_CLASSIFIER_MANIFEST,
+    BEST_CLASSIFIER_PREFIX,
+    CLASSIFIER_MODELS_DIR,
+    METRICS_DIR,
+    OUTPUT_DIR,
+    PRODUCTION_PREPROCESSING_MODEL_NAME,
+)
 from src.spark.session import get_spark
 from src.ml.preprocessing import (
     DEFAULT_EMPTY_PIXEL_THRESHOLD,
@@ -31,7 +38,7 @@ from src.ml.preprocessing import (
 
 
 TARGET_PREPROCESSING_CONFIG = PreprocessingConfig(
-    name="normalized_compact_pca",
+    name=PRODUCTION_PREPROCESSING_MODEL_NAME,
     normalize=True,
     drop_empty_pixels=True,
     empty_pixel_threshold=DEFAULT_EMPTY_PIXEL_THRESHOLD,
@@ -295,9 +302,11 @@ def pick_best_model(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def save_best_model(model: Any, model_name: str) -> str:
-    model_path = os.path.join(CLASSIFIER_MODELS_DIR, f"best_{model_name}")
+    model_path = os.path.join(CLASSIFIER_MODELS_DIR, f"{BEST_CLASSIFIER_PREFIX}{model_name}")
     os.makedirs(model_path, exist_ok=True)
     model.write().overwrite().save(model_path)
+    with open(BEST_CLASSIFIER_MANIFEST, "w") as manifest:
+        manifest.write(model_name)
     return model_path
 
 

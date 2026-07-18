@@ -174,9 +174,7 @@ elif input_method == "Importer une image":
     if uploaded is not None:
         image_bytes = uploaded.getvalue()
 else:
-    st.caption(
-        "Écrivez les cinq chiffres côte à côte, avec un petit espace entre eux."
-    )
+    st.caption("Écrivez les cinq chiffres côte à côte, avec un petit espace entre eux.")
     canvas = st_canvas(
         stroke_width=16,
         stroke_color="#000000",

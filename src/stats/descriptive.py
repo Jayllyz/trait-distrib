@@ -2,14 +2,17 @@ import csv
 import os
 import re
 
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, mean, stddev, when
 from pyspark.sql.functions import max as spark_max
 from pyspark.sql.functions import min as spark_min
 from pyspark.sql.functions import sum as spark_sum
 
 from src.config import STATS_DIR
+from src.spark.transformations import create_temp_view, filter_rows, run_sql
 from src.stats.storage import ensure_dirs
+
+CENTER_PIXEL = "pixel406"  # ligne 14, colonne 14 de l'image 28x28
 
 
 def get_sorted_pixel_cols(df: DataFrame):
@@ -19,6 +22,38 @@ def get_sorted_pixel_cols(df: DataFrame):
         key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 0
     )
     return cols
+
+
+def run_sql_analysis(spark: SparkSession, df: DataFrame) -> list[dict]:
+    """Analyse via Spark SQL (vue temporaire + requêtes) et équivalent DataFrame."""
+    create_temp_view(df, "digits")
+    label_stats = run_sql(
+        spark,
+        f"SELECT label, COUNT(*) AS n, ROUND(AVG({CENTER_PIXEL}), 2) AS avg_center_ink "
+        "FROM digits GROUP BY label ORDER BY label",
+    )
+    label_stats.show()
+
+    sql_inked = run_sql(
+        spark, f"SELECT COUNT(*) AS n FROM digits WHERE {CENTER_PIXEL} > 0"
+    ).collect()[0]["n"]
+    df_inked = filter_rows(df, col(CENTER_PIXEL) > 0).count()
+    print(f"Images avec le pixel central encré : SQL={sql_inked}, DataFrame={df_inked}")
+
+    data = [
+        {
+            "label": int(row["label"]),
+            "n": int(row["n"]),
+            "avg_center_ink": float(row["avg_center_ink"]),
+        }
+        for row in label_stats.collect()
+    ]
+    ensure_dirs()
+    with open(os.path.join(STATS_DIR, "sql_label_stats.csv"), "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["label", "n", "avg_center_ink"])
+        writer.writeheader()
+        writer.writerows(data)
+    return data
 
 
 def compute_and_save_frequencies(df: DataFrame):

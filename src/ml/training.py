@@ -4,7 +4,7 @@ import argparse
 import csv
 import os
 import time
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 from pyspark.ml.classification import (
@@ -13,9 +13,7 @@ from pyspark.ml.classification import (
     RandomForestClassifier,
 )
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-from pyspark.mllib.evaluation import MulticlassMetrics
-from pyspark import RDD
-from pyspark.sql import DataFrame, Row, SparkSession
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col
 
 from src.config import (
@@ -117,34 +115,47 @@ def build_classifiers() -> list[tuple[str, Any]]:
     ]
 
 
-def compute_class_metrics(predictions: DataFrame) -> list[dict[str, Any]]:
-    metrics = MulticlassMetrics(
-        cast("RDD[Row]", predictions.select("prediction", "label").rdd).map(
-            lambda row: (float(row[0]), float(row[1]))
-        )
+def _label_prediction_counts(predictions: DataFrame) -> dict[tuple[int, int], int]:
+    rows = (
+        predictions.select("prediction", "label")
+        .groupBy("label", "prediction")
+        .count()
+        .collect()
     )
+    return {(int(row["label"]), int(row["prediction"])): row["count"] for row in rows}
+
+
+def compute_class_metrics(predictions: DataFrame) -> list[dict[str, Any]]:
+    counts = _label_prediction_counts(predictions)
 
     class_metrics = []
     for label in range(10):
-        label_value = float(label)
+        tp = counts.get((label, label), 0)
+        actual_total = sum(c for (actual, _pred), c in counts.items() if actual == label)
+        predicted_total = sum(c for (_actual, pred), c in counts.items() if pred == label)
+
+        precision = tp / predicted_total if predicted_total else 0.0
+        recall = tp / actual_total if actual_total else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+
         class_metrics.append(
             {
                 "label": label,
-                "precision": float(metrics.precision(label_value)),
-                "recall": float(metrics.recall(label_value)),
-                "f1": float(metrics.fMeasure(label_value)),
+                "precision": float(precision),
+                "recall": float(recall),
+                "f1": float(f1),
             }
         )
     return class_metrics
 
 
 def compute_confusion_matrix(predictions: DataFrame) -> np.ndarray:
-    metrics = MulticlassMetrics(
-        cast("RDD[Row]", predictions.select("prediction", "label").rdd).map(
-            lambda row: (float(row[0]), float(row[1]))
-        )
-    )
-    return metrics.confusionMatrix().toArray()
+    counts = _label_prediction_counts(predictions)
+    matrix = np.zeros((10, 10), dtype=np.int64)
+    for (actual, predicted), count in counts.items():
+        if actual < 10 and predicted < 10:
+            matrix[actual][predicted] = count
+    return matrix
 
 
 def save_confusion_matrix(matrix: np.ndarray, path: str) -> None:

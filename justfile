@@ -44,7 +44,10 @@ typecheck:
 check: lint format typecheck
 
 test:
-    uv run pytest
+    uv run pytest -m "not spark"
+
+test-spark:
+    uv run pytest -m spark
 
 clean:
     rm -rf .ruff_cache .venv

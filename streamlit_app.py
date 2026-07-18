@@ -13,6 +13,7 @@ from postal_app.preprocessing import (
     stack_segment_images,
 )
 from postal_app.predictor import (
+    PredictionError,
     PredictorConfigurationError,
     analyze_digits,
     get_predictor,
@@ -131,6 +132,8 @@ if predictor_mode == "demo":
         "confiances affichés sont simulés. La segmentation de la photo est réelle.</div>",
         unsafe_allow_html=True,
     )
+elif predictor_mode in {"spark", "real"}:
+    st.success("Mode réel — prédictions produites par le modèle Spark entraîné.")
 
 with st.expander("Conseils pour une photo lisible", expanded=True):
     st.markdown(
@@ -194,6 +197,7 @@ if uploaded is not None:
         except (
             ImageValidationError,
             SegmentationError,
+            PredictionError,
             PredictorConfigurationError,
         ) as error:
             st.session_state["analysis_error"] = str(error)

@@ -12,6 +12,7 @@ from pyspark.ml.feature import MinMaxScaler, PCA, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, sum as spark_sum, when
 
+from src.spark.session import get_spark
 from src.config import (
     DATASET_DIR,
     METRICS_DIR,
@@ -261,11 +262,7 @@ def save_summary(rows: list[dict[str, object]]) -> None:
 def run_preprocessing_workflow() -> None:
     ensure_output_dirs()
 
-    spark = (
-        SparkSession.builder.appName("trait-distrib-preprocessing")
-        .master("local[1]")
-        .getOrCreate()
-    )
+    spark = get_spark("trait-distrib-preprocessing")
     spark.sparkContext.setLogLevel("WARN")
 
     train_df, test_df = read_train_test_frames(spark)

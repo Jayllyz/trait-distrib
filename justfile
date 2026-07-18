@@ -21,13 +21,13 @@ install:
     uv sync --all-packages
 
 run:
-    uv run src/main.py
+    uv run main.py
 
 preprocess:
-    uv run src/preprocessing.py
+    uv run -m src.ml.preprocessing
 
 train:
-    uv run src/training.py
+    uv run -m src.ml.training
 
 streamlit:
     uv run streamlit run streamlit_app.py

@@ -1,17 +1,8 @@
-"""Chargement des données (Séance 3 du cours : formats CSV, JSON, Parquet)."""
-
 import os
-import sys
 
 from pyspark.sql import DataFrame, SparkSession
 
 from src.config import DATASET_DIR
-
-
-def get_spark(app_name: str = "trait-distrib") -> SparkSession:
-    """SparkSession en mode local threadé (pas de broadcast/repartition utiles ici)."""
-    os.environ["PYSPARK_PYTHON"] = sys.executable
-    return SparkSession.builder.appName(app_name).master("local[*]").getOrCreate()
 
 
 def fetch_dataset() -> str:

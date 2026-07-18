@@ -19,7 +19,8 @@ from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col
 
 from src.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
-from src.preprocessing import (
+from src.spark.session import get_spark
+from src.ml.preprocessing import (
     DEFAULT_EMPTY_PIXEL_THRESHOLD,
     DEFAULT_PCA_COMPONENTS,
     PreprocessingConfig,
@@ -304,11 +305,7 @@ def run_machine_learning_workflow(sample_fraction: float) -> None:
     ensure_output_dirs()
     ensure_classifier_dirs()
 
-    spark = (
-        SparkSession.builder.appName("trait-distrib-machine-learning")
-        .master("local[1]")
-        .getOrCreate()
-    )
+    spark = get_spark("trait-distrib-machine-learning")
     spark.sparkContext.setLogLevel("WARN")
 
     prepared_df = load_or_build_preprocessed_train_frame(spark)

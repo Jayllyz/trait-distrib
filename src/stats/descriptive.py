@@ -1,8 +1,10 @@
 import csv
 import os
 import re
+from typing import cast
 
-from pyspark.sql import DataFrame, SparkSession
+from pyspark import RDD
+from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col, mean, stddev, when
 from pyspark.sql.functions import max as spark_max
 from pyspark.sql.functions import min as spark_min
@@ -24,7 +26,8 @@ def get_sorted_pixel_cols(df: DataFrame):
 def run_map_reduce_analysis(df: DataFrame) -> list[tuple[int, int]]:
     """MapReduce explicite sur l'API RDD : comptage des images par label."""
     counts = (
-        df.rdd.map(lambda row: (row["label"], 1))
+        cast("RDD[Row]", df.rdd)
+        .map(lambda row: (row["label"], 1))
         .reduceByKey(lambda a, b: a + b)
         .sortByKey()
         .collect()

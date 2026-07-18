@@ -11,6 +11,7 @@ from postal_app.preprocessing import (
     load_image,
     segment_postal_code,
     stack_segment_images,
+    thicken_segments,
 )
 
 
@@ -60,6 +61,25 @@ def test_segment_five_left_to_right_digits() -> None:
     assert all(np.count_nonzero(digit) > 0 for digit in batch)
     assert [segment.bounding_box[0] for segment in segments] == sorted(
         segment.bounding_box[0] for segment in segments
+    )
+
+
+def test_thicken_segments_increases_stroke_area_without_mutating_source() -> None:
+    segments = segment_postal_code(_postal_code_image())
+    original_images = tuple(segment.image.copy() for segment in segments)
+
+    thickened = thicken_segments(segments)
+
+    assert [segment.bounding_box for segment in thickened] == [
+        segment.bounding_box for segment in segments
+    ]
+    assert all(
+        np.count_nonzero(result.image) > np.count_nonzero(source.image)
+        for source, result in zip(segments, thickened, strict=True)
+    )
+    assert all(
+        np.array_equal(segment.image, original)
+        for segment, original in zip(segments, original_images, strict=True)
     )
 
 

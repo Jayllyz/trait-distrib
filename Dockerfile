@@ -23,6 +23,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14-slim-trixie AS runtime
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-21-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --gid 1000 app && useradd --uid 1000 --gid app --create-home app
 
 WORKDIR /app

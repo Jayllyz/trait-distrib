@@ -1,5 +1,3 @@
-"""Mobile-first Streamlit page for testing handwritten postal codes."""
-
 import hashlib
 import json
 import os

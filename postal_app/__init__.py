@@ -1,5 +1,3 @@
-"""Reusable components for the postal-code Streamlit demo."""
-
 from postal_app.domain import DigitPrediction, PostalAnalysis
 from postal_app.preprocessing import (
     ImageValidationError,

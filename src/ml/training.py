@@ -18,7 +18,14 @@ from pyspark import RDD
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col
 
-from src.config import CLASSIFIER_MODELS_DIR, METRICS_DIR, OUTPUT_DIR
+from src.config import (
+    BEST_CLASSIFIER_MANIFEST,
+    BEST_CLASSIFIER_PREFIX,
+    CLASSIFIER_MODELS_DIR,
+    METRICS_DIR,
+    OUTPUT_DIR,
+    PRODUCTION_PREPROCESSING_MODEL_NAME,
+)
 from src.spark.session import get_spark
 from src.ml.preprocessing import (
     DEFAULT_EMPTY_PIXEL_THRESHOLD,
@@ -31,7 +38,7 @@ from src.ml.preprocessing import (
 
 
 TARGET_PREPROCESSING_CONFIG = PreprocessingConfig(
-    name="normalized_compact_pca",
+    name=PRODUCTION_PREPROCESSING_MODEL_NAME,
     normalize=True,
     drop_empty_pixels=True,
     empty_pixel_threshold=DEFAULT_EMPTY_PIXEL_THRESHOLD,
@@ -295,9 +302,13 @@ def pick_best_model(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def save_best_model(model: Any, model_name: str) -> str:
-    model_path = os.path.join(CLASSIFIER_MODELS_DIR, f"best_{model_name}")
+    model_path = os.path.join(
+        CLASSIFIER_MODELS_DIR, f"{BEST_CLASSIFIER_PREFIX}{model_name}"
+    )
     os.makedirs(model_path, exist_ok=True)
     model.write().overwrite().save(model_path)
+    with open(BEST_CLASSIFIER_MANIFEST, "w") as manifest:
+        manifest.write(model_name)
     return model_path
 
 
@@ -306,55 +317,59 @@ def run_machine_learning_workflow(sample_fraction: float) -> None:
     ensure_classifier_dirs()
 
     spark = get_spark("trait-distrib-machine-learning")
-    spark.sparkContext.setLogLevel("WARN")
+    try:
+        spark.sparkContext.setLogLevel("WARN")
 
-    prepared_df = load_or_build_preprocessed_train_frame(spark)
-    if not 0 < sample_fraction <= 1:
-        raise ValueError("sample_fraction must be in the (0, 1] interval")
+        prepared_df = load_or_build_preprocessed_train_frame(spark)
+        if not 0 < sample_fraction <= 1:
+            raise ValueError("sample_fraction must be in the (0, 1] interval")
 
-    working_df = prepared_df.sample(
-        withReplacement=False, fraction=sample_fraction, seed=42
-    )
-    working_df = working_df.cache()
-    working_df.count()
+        working_df = prepared_df.sample(
+            withReplacement=False, fraction=sample_fraction, seed=42
+        )
+        working_df = working_df.cache()
+        working_df.count()
 
-    feature_dimension = get_feature_dimension(working_df)
-    print(f"[training] Feature dimension: {feature_dimension}")
+        feature_dimension = get_feature_dimension(working_df)
+        print(f"[training] Feature dimension: {feature_dimension}")
 
-    train_df, val_df = working_df.randomSplit([0.8, 0.2], seed=42)
-    train_df.cache()
-    val_df.cache()
-    train_df.count()
-    val_df.count()
+        train_df, val_df = working_df.randomSplit([0.8, 0.2], seed=42)
+        train_df.cache()
+        val_df.cache()
+        train_df.count()
+        val_df.count()
 
-    results, models = train_and_evaluate_models(train_df, val_df, feature_dimension)
-    save_model_comparison(results)
-    print_table(results)
+        results, models = train_and_evaluate_models(train_df, val_df, feature_dimension)
+        save_model_comparison(results)
+        print_table(results)
 
-    best_row = pick_best_model(results)
-    best_model_name = str(best_row["model"])
-    best_model = models[best_model_name]
-    best_model_path = save_best_model(best_model, best_model_name)
+        best_row = pick_best_model(results)
+        best_model_name = str(best_row["model"])
+        best_model = models[best_model_name]
+        best_model_path = save_best_model(best_model, best_model_name)
 
-    print(f"Meilleur modèle: {best_model_name}")
-    print(
-        f"Accuracy={float(best_row['accuracy']):.4f} | F1={float(best_row['f1']):.4f} | "
-        f"Précision pondérée={float(best_row['weighted_precision']):.4f} | "
-        f"Rappel pondéré={float(best_row['weighted_recall']):.4f}"
-    )
-    print(f"Modèle sauvegardé: {best_model_path}")
-    print(f"Résultats détaillés: {os.path.join(METRICS_DIR, 'model_comparison.csv')}")
-    print(
-        f"Matrice de confusion: {os.path.join(METRICS_DIR, f'confusion_matrix_{best_model_name}.csv')}"
-    )
-    print(
-        f"Métriques par classe: {os.path.join(METRICS_DIR, f'class_metrics_{best_model_name}.csv')}"
-    )
+        print(f"Meilleur modèle: {best_model_name}")
+        print(
+            f"Accuracy={float(best_row['accuracy']):.4f} | F1={float(best_row['f1']):.4f} | "
+            f"Précision pondérée={float(best_row['weighted_precision']):.4f} | "
+            f"Rappel pondéré={float(best_row['weighted_recall']):.4f}"
+        )
+        print(f"Modèle sauvegardé: {best_model_path}")
+        print(
+            f"Résultats détaillés: {os.path.join(METRICS_DIR, 'model_comparison.csv')}"
+        )
+        print(
+            f"Matrice de confusion: {os.path.join(METRICS_DIR, f'confusion_matrix_{best_model_name}.csv')}"
+        )
+        print(
+            f"Métriques par classe: {os.path.join(METRICS_DIR, f'class_metrics_{best_model_name}.csv')}"
+        )
 
-    train_df.unpersist()
-    val_df.unpersist()
-    working_df.unpersist()
-    spark.stop()
+        train_df.unpersist()
+        val_df.unpersist()
+        working_df.unpersist()
+    finally:
+        spark.stop()
 
 
 def main() -> None:

@@ -13,3 +13,7 @@ PLOTS_DIR = os.path.join(OUTPUT_DIR, "plots")
 
 # Si True, recalcule les statistiques même si elles existent déjà
 FORCE_RECOMPUTE_STATS = False
+
+PRODUCTION_PREPROCESSING_MODEL_NAME = "normalized_compact_pca"
+BEST_CLASSIFIER_PREFIX = "best_"
+BEST_CLASSIFIER_MANIFEST = os.path.join(CLASSIFIER_MODELS_DIR, "best_model_name.txt")

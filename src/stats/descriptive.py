@@ -1,8 +1,10 @@
 import csv
 import os
 import re
+from typing import cast
 
-from pyspark.sql import DataFrame
+from pyspark import RDD
+from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.functions import col, mean, stddev, when
 from pyspark.sql.functions import max as spark_max
 from pyspark.sql.functions import min as spark_min
@@ -19,6 +21,38 @@ def get_sorted_pixel_cols(df: DataFrame):
         key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 0
     )
     return cols
+
+
+def run_map_reduce_analysis(df: DataFrame) -> list[tuple[int, int]]:
+    """MapReduce explicite sur l'API RDD : comptage des images par label."""
+    counts = (
+        cast("RDD[Row]", df.rdd)
+        .map(lambda row: (row["label"], 1))
+        .reduceByKey(lambda a, b: a + b)
+        .sortByKey()
+        .collect()
+    )
+    print("Comptage par label via RDD map/reduceByKey :", counts)
+    return counts
+
+
+def run_sql_analysis(spark: SparkSession, df: DataFrame) -> tuple[int, int]:
+    """Spark SQL (vue temporaire + requêtes) et son équivalent DataFrame.
+
+    pixel406 est le pixel central de l'image 28x28 (ligne 14, colonne 14).
+    """
+    df.createOrReplaceTempView("digits")
+    spark.sql(
+        "SELECT label, COUNT(*) AS n, ROUND(AVG(pixel406), 2) AS avg_center_ink "
+        "FROM digits GROUP BY label ORDER BY label"
+    ).show()
+
+    sql_count = spark.sql(
+        "SELECT COUNT(*) AS n FROM digits WHERE pixel406 > 0"
+    ).collect()[0]["n"]
+    df_count = df.filter(col("pixel406") > 0).count()
+    print(f"Images avec le pixel central encré : SQL={sql_count}, DataFrame={df_count}")
+    return sql_count, df_count
 
 
 def compute_and_save_frequencies(df: DataFrame):

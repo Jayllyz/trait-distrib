@@ -21,7 +21,6 @@ wheels/
 .coverage
 digit-recognizer/
 notebooks/
-outputs/
 tests/
 Dockerfile
 .dockerignore

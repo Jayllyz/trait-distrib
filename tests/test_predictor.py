@@ -3,6 +3,7 @@ import pytest
 
 import postal_app.predictor as predictor_module
 from postal_app.predictor import (
+    CnnPredictor,
     DemoPredictor,
     PredictionError,
     PredictorConfigurationError,
@@ -51,6 +52,27 @@ def test_spark_loader_rejects_missing_artifacts(tmp_path) -> None:
             str(tmp_path / "missing-preprocessing"),
             str(tmp_path / "missing-classifier"),
         )
+
+
+def test_cnn_mode_loads_the_configured_backend(monkeypatch, tmp_path) -> None:
+    model_path = tmp_path / "digit_cnn.pt"
+    sentinel = object()
+    calls = []
+
+    monkeypatch.setenv("CNN_MODEL_PATH", str(model_path))
+    monkeypatch.setattr(
+        predictor_module,
+        "_load_cnn_predictor",
+        lambda path: calls.append(path) or sentinel,
+    )
+
+    assert get_predictor("cnn") is sentinel
+    assert calls == [str(model_path)]
+
+
+def test_cnn_loader_rejects_missing_artifact(tmp_path) -> None:
+    with pytest.raises(PredictorConfigurationError, match="introuvable"):
+        predictor_module._load_cnn_predictor(str(tmp_path / "missing-cnn.pt"))
 
 
 def test_unknown_predictor_mode_is_rejected() -> None:
@@ -149,3 +171,22 @@ def test_spark_predictor_wraps_inference_errors() -> None:
 
     with pytest.raises(PredictionError, match="n'a pas pu"):
         predictor.predict(np.zeros((5, 28, 28), dtype=np.uint8))
+
+
+def test_cnn_predictor_returns_softmax_probabilities() -> None:
+    import torch
+
+    class _FixedModel(torch.nn.Module):
+        def forward(self, images):
+            logits = torch.zeros((images.shape[0], 10), dtype=torch.float32)
+            expected = (9, 3, 4, 0, 0)
+            for position, digit in enumerate(expected):
+                logits[position, digit] = 4.0
+            return logits
+
+    predictor = CnnPredictor(_FixedModel(), torch)
+
+    predictions = predictor.predict(np.zeros((5, 28, 28), dtype=np.uint8))
+
+    assert tuple(item.digit for item in predictions) == (9, 3, 4, 0, 0)
+    assert all(0.0 < item.confidence < 1.0 for item in predictions)

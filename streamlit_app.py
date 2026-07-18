@@ -1,8 +1,10 @@
 """Mobile-first Streamlit page for testing handwritten postal codes."""
 
 import hashlib
+import json
 import os
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 import streamlit as st
@@ -25,6 +27,10 @@ from postal_app.predictor import (
 )
 
 AUTOMATIC_SORT_THRESHOLD = 0.8
+CNN_PARAMETER_COUNT = 421_642
+CNN_METRICS_PATH = (
+    Path(__file__).resolve().parent / "output" / "metrics" / "cnn_metrics.json"
+)
 
 st.set_page_config(
     page_title="Lecture de code postal",
@@ -75,6 +81,48 @@ def _reset_analysis() -> None:
     st.session_state["input_version"] = st.session_state.get("input_version", 0) + 1
     for key in ("analysis", "segments", "analysis_key", "analysis_error"):
         st.session_state.pop(key, None)
+
+
+@st.cache_data
+def _load_cnn_metrics() -> dict:
+    try:
+        metrics = json.loads(CNN_METRICS_PATH.read_text(encoding="utf-8"))
+    except OSError, ValueError, TypeError:
+        return {}
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def _render_cnn_characteristics() -> None:
+    metrics = _load_cnn_metrics()
+    with st.expander("Caractéristiques du CNN", expanded=True):
+        st.markdown(
+            """
+            **Architecture**
+
+            `28×28×1 → Conv2D(32) → MaxPool → Conv2D(64) → MaxPool → Dense(128) → 10 classes`
+
+            - Entrée en niveaux de gris, normalisée entre 0 et 1.
+            - Dropout de 25 % puis 50 % pour limiter le surapprentissage.
+            - Entraînement PyTorch sur CPU orchestré par PySpark TorchDistributor.
+            - Augmentations : rotations, translations, flou, bruit et épaisseur variable.
+            """
+        )
+        accuracy = metrics.get("best_validation_accuracy")
+        train_samples = metrics.get("train_samples")
+        validation_samples = metrics.get("validation_samples")
+        epochs = metrics.get("epochs_completed")
+        first_row = st.columns(2)
+        first_row[0].metric(
+            "Accuracy de validation",
+            f"{float(accuracy):.2%}" if isinstance(accuracy, (int, float)) else "—",
+        )
+        first_row[1].metric(
+            "Paramètres entraînables", f"{CNN_PARAMETER_COUNT:,}".replace(",", " ")
+        )
+        second_row = st.columns(3)
+        second_row[0].metric("Images d’entraînement", train_samples or "—")
+        second_row[1].metric("Images de validation", validation_samples or "—")
+        second_row[2].metric("Époques", epochs or "—")
 
 
 def _render_segments(segments: tuple) -> None:
@@ -131,14 +179,30 @@ st.write(
 )
 
 predictor_mode = os.getenv("PREDICTOR_MODE", "demo").strip().lower()
+active_predictor_mode = predictor_mode
 if predictor_mode == "demo":
     st.markdown(
         '<div class="demo-badge"><strong>Mode démo</strong> — les chiffres et les '
         "confiances affichés sont simulés. La segmentation de la photo est réelle.</div>",
         unsafe_allow_html=True,
     )
-elif predictor_mode in {"spark", "real"}:
-    st.success("Mode réel — prédictions produites par le modèle Spark entraîné.")
+elif predictor_mode in {"spark", "real", "cnn"}:
+    model_options = {
+        "Random Forest — modèle Spark entraîné": "spark",
+        "CNN — modèle PyTorch": "cnn",
+    }
+    model_labels = tuple(model_options)
+    default_model_index = 1 if predictor_mode == "cnn" else 0
+    selected_model_label = st.radio(
+        "Modèle de reconnaissance",
+        model_labels,
+        index=default_model_index,
+        horizontal=True,
+    )
+    active_predictor_mode = model_options[selected_model_label]
+    st.success(f"Mode réel — {selected_model_label}.")
+    if active_predictor_mode == "cnn":
+        _render_cnn_characteristics()
 
 with st.expander("Conseils pour une photo lisible", expanded=True):
     st.markdown(
@@ -208,7 +272,9 @@ if image_bytes is not None:
             "envoyer au modèle. Comparez le résultat avec et sans cette option."
         ),
     )
-    current_analysis_key = f"{current_hash}:thicken={int(thicken_strokes)}"
+    current_analysis_key = (
+        f"{current_hash}:model={active_predictor_mode}:thicken={int(thicken_strokes)}"
+    )
 
     if st.session_state.get("analysis_key") != current_analysis_key:
         for stale_key in ("analysis", "segments", "analysis_error"):
@@ -226,7 +292,7 @@ if image_bytes is not None:
                 if thicken_strokes:
                     segments = thicken_segments(segments)
                 batch = stack_segment_images(segments)
-                predictor = get_predictor(predictor_mode)
+                predictor = get_predictor(active_predictor_mode)
                 analysis = analyze_digits(
                     batch,
                     predictor,

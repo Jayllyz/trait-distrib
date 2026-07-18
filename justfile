@@ -29,6 +29,9 @@ preprocess:
 train:
     uv run -m src.ml.training
 
+train-cnn:
+    uv run -m src.ml.cnn_training
+
 streamlit:
     uv run streamlit run streamlit_app.py
 

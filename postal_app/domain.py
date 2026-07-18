@@ -1,12 +1,8 @@
-"""Domain objects shared by the UI and prediction implementations."""
-
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
 class DigitPrediction:
-    """Prediction returned for one handwritten digit."""
-
     digit: int
     confidence: float
 
@@ -19,8 +15,6 @@ class DigitPrediction:
 
 @dataclass(frozen=True, slots=True)
 class PostalAnalysis:
-    """Business result for a five-digit French postal code."""
-
     predictions: tuple[DigitPrediction, ...]
     automatic_sort_threshold: float = 0.8
 

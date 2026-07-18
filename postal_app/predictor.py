@@ -1,5 +1,3 @@
-"""Prediction contract and demonstration and Spark implementations."""
-
 from functools import lru_cache
 import hashlib
 import logging
@@ -24,24 +22,18 @@ logger = logging.getLogger(__name__)
 
 
 class PredictorConfigurationError(RuntimeError):
-    """Raised when the selected prediction backend is unavailable."""
+    pass
 
 
 class PredictionError(RuntimeError):
-    """Raised when a configured backend cannot complete an inference."""
+    pass
 
 
 class Predictor(Protocol):
-    """Contract shared by prediction backends."""
-
-    def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]:
-        """Predict five uint8 images shaped (5, 28, 28)."""
-        ...
+    def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]: ...
 
 
 class DemoPredictor:
-    """Deterministic fake predictor used only to exercise the user journey."""
-
     def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]:
         _validate_batch(digits)
         predictions: list[DigitPrediction] = []
@@ -56,8 +48,6 @@ class DemoPredictor:
 
 
 class SparkPredictor:
-    """Adapter from five MNIST-like images to persisted Spark ML models."""
-
     def __init__(
         self,
         spark: Any,
@@ -119,8 +109,6 @@ _SPARK_PREDICTOR_LOCK = Lock()
 
 
 def get_predictor(mode: str | None = None) -> Predictor:
-    """Build the configured backend without silently falling back to demo mode."""
-
     selected_mode = (mode or os.getenv("PREDICTOR_MODE", "demo")).strip().lower()
     if selected_mode == "demo":
         return DemoPredictor()

@@ -1,5 +1,3 @@
-"""Image validation and handwritten postal-code segmentation."""
-
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -14,24 +12,20 @@ EXPECTED_DIGITS = 5
 
 
 class ImageValidationError(ValueError):
-    """Raised when an uploaded image cannot be safely decoded."""
+    pass
 
 
 class SegmentationError(ValueError):
-    """Raised when the image cannot be separated into five credible digits."""
+    pass
 
 
 @dataclass(frozen=True, slots=True)
 class DigitSegment:
-    """One detected digit, normalized like an MNIST sample."""
-
     image: np.ndarray
     bounding_box: tuple[int, int, int, int]
 
 
 def load_image(data: bytes) -> np.ndarray:
-    """Decode, orient and bound an uploaded JPG or PNG as an RGB array."""
-
     if not data:
         raise ImageValidationError("L'image reçue est vide.")
     if len(data) > MAX_FILE_SIZE_BYTES:
@@ -66,8 +60,6 @@ def load_image(data: bytes) -> np.ndarray:
 
 
 def segment_postal_code(image_rgb: np.ndarray) -> tuple[DigitSegment, ...]:
-    """Find five left-to-right digits and normalize each one to 28 by 28 pixels."""
-
     if image_rgb.ndim != 3 or image_rgb.shape[2] != 3:
         raise ImageValidationError("L'image doit être fournie au format RGB.")
 
@@ -155,8 +147,6 @@ def segment_postal_code(image_rgb: np.ndarray) -> tuple[DigitSegment, ...]:
 def thicken_segments(
     segments: tuple[DigitSegment, ...],
 ) -> tuple[DigitSegment, ...]:
-    """Slightly thicken normalized strokes with one symmetric dilation pass."""
-
     kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
     return tuple(
         DigitSegment(
@@ -168,8 +158,6 @@ def thicken_segments(
 
 
 def stack_segment_images(segments: tuple[DigitSegment, ...]) -> np.ndarray:
-    """Build the model input batch from detected segments."""
-
     if len(segments) != EXPECTED_DIGITS:
         raise ValueError("exactly five segments are required")
     return np.stack([segment.image for segment in segments]).astype(np.uint8)

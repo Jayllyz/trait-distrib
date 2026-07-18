@@ -18,21 +18,5 @@ def load_csv(spark: SparkSession, path: str) -> DataFrame:
     return spark.read.csv(path, header=True, inferSchema=True)
 
 
-def load_json(spark: SparkSession, path: str) -> DataFrame:
-    return spark.read.json(path)
-
-
-def load_parquet(spark: SparkSession, path: str) -> DataFrame:
-    return spark.read.parquet(path)
-
-
-def write_parquet(df: DataFrame, path: str) -> None:
-    df.write.mode("overwrite").parquet(path)
-
-
 def load_train(spark: SparkSession) -> DataFrame:
     return load_csv(spark, os.path.join(fetch_dataset(), "train.csv"))
-
-
-def load_test(spark: SparkSession) -> DataFrame:
-    return load_csv(spark, os.path.join(fetch_dataset(), "test.csv"))

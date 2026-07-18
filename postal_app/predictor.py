@@ -23,9 +23,6 @@ class PredictionError(RuntimeError):
 class Predictor(Protocol):
     """Contract shared by prediction backends."""
 
-    @property
-    def is_demo(self) -> bool: ...
-
     def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]:
         """Predict five uint8 images shaped (5, 28, 28)."""
         ...
@@ -33,8 +30,6 @@ class Predictor(Protocol):
 
 class DemoPredictor:
     """Deterministic fake predictor used only to exercise the user journey."""
-
-    is_demo = True
 
     def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]:
         _validate_batch(digits)
@@ -51,8 +46,6 @@ class DemoPredictor:
 
 class SparkPredictor:
     """Adapter from five MNIST-like images to persisted Spark ML models."""
-
-    is_demo = False
 
     def __init__(
         self,

@@ -22,6 +22,12 @@ def main() -> None:
     spark = get_spark()
     train_df = load_train(spark).cache()
 
+    print("Comptage MapReduce (API RDD)...")
+    descriptive.run_map_reduce_analysis(train_df)
+
+    print("Analyse Spark SQL (vue temporaire + requêtes)...")
+    descriptive.run_sql_analysis(spark, train_df)
+
     stats_files_exist = all(
         os.path.exists(os.path.join(STATS_DIR, f))
         for f in [

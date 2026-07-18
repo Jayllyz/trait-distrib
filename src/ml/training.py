@@ -131,12 +131,20 @@ def compute_class_metrics(predictions: DataFrame) -> list[dict[str, Any]]:
     class_metrics = []
     for label in range(10):
         tp = counts.get((label, label), 0)
-        actual_total = sum(c for (actual, _pred), c in counts.items() if actual == label)
-        predicted_total = sum(c for (_actual, pred), c in counts.items() if pred == label)
+        actual_total = sum(
+            c for (actual, _pred), c in counts.items() if actual == label
+        )
+        predicted_total = sum(
+            c for (_actual, pred), c in counts.items() if pred == label
+        )
 
         precision = tp / predicted_total if predicted_total else 0.0
         recall = tp / actual_total if actual_total else 0.0
-        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall)
+            else 0.0
+        )
 
         class_metrics.append(
             {

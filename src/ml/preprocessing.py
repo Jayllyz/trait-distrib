@@ -263,41 +263,43 @@ def run_preprocessing_workflow() -> None:
     ensure_output_dirs()
 
     spark = get_spark("trait-distrib-preprocessing")
-    spark.sparkContext.setLogLevel("WARN")
+    try:
+        spark.sparkContext.setLogLevel("WARN")
 
-    train_df, test_df = read_train_test_frames(spark)
-    train_df.cache()
-    test_df.cache()
-    train_df.count()
-    test_df.count()
+        train_df, test_df = read_train_test_frames(spark)
+        train_df.cache()
+        test_df.cache()
+        train_df.count()
+        test_df.count()
 
-    configs = [
-        PreprocessingConfig(name="raw_pixels", normalize=False),
-        PreprocessingConfig(name="normalized_pixels", normalize=True),
-        PreprocessingConfig(
-            name="normalized_compact_pixels",
-            normalize=True,
-            drop_empty_pixels=True,
-            empty_pixel_threshold=DEFAULT_EMPTY_PIXEL_THRESHOLD,
-        ),
-        PreprocessingConfig(
-            name="normalized_compact_pca",
-            normalize=True,
-            drop_empty_pixels=True,
-            empty_pixel_threshold=DEFAULT_EMPTY_PIXEL_THRESHOLD,
-            pca_components=DEFAULT_PCA_COMPONENTS,
-        ),
-    ]
+        configs = [
+            PreprocessingConfig(name="raw_pixels", normalize=False),
+            PreprocessingConfig(name="normalized_pixels", normalize=True),
+            PreprocessingConfig(
+                name="normalized_compact_pixels",
+                normalize=True,
+                drop_empty_pixels=True,
+                empty_pixel_threshold=DEFAULT_EMPTY_PIXEL_THRESHOLD,
+            ),
+            PreprocessingConfig(
+                name="normalized_compact_pca",
+                normalize=True,
+                drop_empty_pixels=True,
+                empty_pixel_threshold=DEFAULT_EMPTY_PIXEL_THRESHOLD,
+                pca_components=DEFAULT_PCA_COMPONENTS,
+            ),
+        ]
 
-    summary_rows = []
-    for config in configs:
-        print(f"[preprocessing] Running {config.name}...")
-        summary_rows.append(run_configuration(spark, train_df, test_df, config))
+        summary_rows = []
+        for config in configs:
+            print(f"[preprocessing] Running {config.name}...")
+            summary_rows.append(run_configuration(spark, train_df, test_df, config))
 
-    save_summary(summary_rows)
-    train_df.unpersist()
-    test_df.unpersist()
-    spark.stop()
+        save_summary(summary_rows)
+        train_df.unpersist()
+        test_df.unpersist()
+    finally:
+        spark.stop()
 
     print(f"[preprocessing] Artifacts saved in {OUTPUT_DIR}")
 

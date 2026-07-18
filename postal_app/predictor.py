@@ -152,6 +152,7 @@ def _load_spark_predictor(
             "Artefact(s) du modèle Spark introuvable(s) : " + ", ".join(missing_paths)
         )
 
+    spark = None
     try:
         from pyspark.ml import PipelineModel
         from pyspark.ml.classification import RandomForestClassificationModel
@@ -175,6 +176,8 @@ def _load_spark_predictor(
         preprocessing_model = PipelineModel.load(preprocessing_path)
         classifier_model = RandomForestClassificationModel.load(classifier_path)
     except Exception as error:
+        if spark is not None:
+            spark.stop()
         raise PredictorConfigurationError(
             "Impossible de charger les artefacts du modèle Spark."
         ) from error

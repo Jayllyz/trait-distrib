@@ -49,11 +49,14 @@ jobs:
     - name: Build production image
       run: docker build --tag trait-distrib:ci .
 
-    - name: Run Spark inference smoke test
+    - name: Run real-model inference smoke tests
       run: >-
         docker run --rm --entrypoint python trait-distrib:ci -c
         'import numpy as np;
         from postal_app.predictor import get_predictor;
-        predictions = get_predictor("spark").predict(np.zeros((5, 28, 28), dtype=np.uint8));
-        assert len(predictions) == 5;
-        assert all(0 <= item.digit <= 9 and 0.0 <= item.confidence <= 1.0 for item in predictions)'
+        batch = np.zeros((5, 28, 28), dtype=np.uint8);
+        spark_predictions = get_predictor("spark").predict(batch);
+        cnn_predictions = get_predictor("cnn").predict(batch);
+        assert len(spark_predictions) == len(cnn_predictions) == 5;
+        assert all(0 <= item.digit <= 9 and 0.0 <= item.confidence <= 1.0
+        for item in (*spark_predictions, *cnn_predictions))'

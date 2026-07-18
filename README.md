@@ -49,6 +49,15 @@ The workflow evaluates several Spark ML models, saves the comparison metrics,
 exports the best model, and writes the confusion matrix plus class-level metrics
 under `output/metrics/`.
 
+Le CNN PyTorch est entraîné sur CPU par le `TorchDistributor` de PySpark :
+
+```bash
+just train-cnn
+```
+
+Le meilleur état est sauvegardé dans `output/models/cnn/digit_cnn.pt`. Les
+métriques et la matrice de confusion sont écrites dans `output/metrics/`.
+
 ## Page Streamlit
 
 ```bash
@@ -65,17 +74,18 @@ MNIST de 28 × 28 pixels.
 Par défaut, `PREDICTOR_MODE=demo` : la segmentation est réelle, mais le code et
 les confiances sont simulés et signalés comme tels dans l'interface.
 
-Le mode réel charge le pipeline de prétraitement PCA et le Random Forest présents
-dans `output/models` :
+Le mode réel propose un sélecteur entre le pipeline PCA + Random Forest Spark et
+le CNN PyTorch présents dans `output/models` :
 
 ```bash
 PREDICTOR_MODE=spark just streamlit
 ```
 
 Les chemins peuvent être remplacés avec `SPARK_PREPROCESSING_MODEL_PATH` et
-`SPARK_CLASSIFIER_MODEL_PATH`. Les chemins relatifs sont résolus depuis la racine
-du projet. Le mode réel est supporté dans l'image Docker Linux ; sous Windows,
-utiliser Docker évite la dépendance Hadoop native à `winutils.exe`.
+`SPARK_CLASSIFIER_MODEL_PATH`, ou `CNN_MODEL_PATH` pour le CNN. Utiliser
+`PREDICTOR_MODE=cnn` pour présélectionner le CNN. Les chemins relatifs sont résolus
+depuis la racine du projet. Le mode Spark est supporté dans l'image Docker Linux ;
+sous Windows, utiliser Docker évite la dépendance Hadoop native à `winutils.exe`.
 
 ## Déploiement Coolify
 

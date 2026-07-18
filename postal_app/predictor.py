@@ -101,11 +101,48 @@ class SparkPredictor:
         return tuple(converted)
 
 
+class CnnPredictor:
+    """Adapter from five MNIST-like images to the persisted PyTorch CNN."""
+
+    def __init__(self, model: Any, torch_module: Any) -> None:
+        self._model = model
+        self._torch = torch_module
+
+    def predict(self, digits: np.ndarray) -> tuple[DigitPrediction, ...]:
+        _validate_batch(digits)
+        try:
+            inputs = (
+                self._torch.from_numpy(digits)
+                .to(dtype=self._torch.float32)
+                .div(255.0)
+                .unsqueeze(1)
+            )
+            with self._torch.inference_mode():
+                logits = self._model(inputs)
+                probabilities = self._torch.softmax(logits, dim=1)
+                predicted_digits = probabilities.argmax(dim=1)
+            return tuple(
+                DigitPrediction(
+                    digit=int(predicted_digits[position]),
+                    confidence=float(
+                        probabilities[position, predicted_digits[position]]
+                    ),
+                )
+                for position in range(digits.shape[0])
+            )
+        except Exception as error:
+            raise PredictionError(
+                "Le modèle CNN n'a pas pu analyser les chiffres."
+            ) from error
+
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PREPROCESSING_MODEL_PATH = (
     Path(MODELS_DIR) / PRODUCTION_PREPROCESSING_MODEL_NAME
 )
+DEFAULT_CNN_MODEL_PATH = Path(MODELS_DIR) / "cnn" / "digit_cnn.pt"
 _SPARK_PREDICTOR_LOCK = Lock()
+_CNN_PREDICTOR_LOCK = Lock()
 
 
 def get_predictor(mode: str | None = None) -> Predictor:
@@ -125,8 +162,15 @@ def get_predictor(mode: str | None = None) -> Predictor:
         # outer lock guarantees one JVM/model initialization for Streamlit.
         with _SPARK_PREDICTOR_LOCK:
             return _load_spark_predictor(preprocessing_path, classifier_path)
+    if selected_mode == "cnn":
+        model_path = _resolve_model_path(
+            os.getenv("CNN_MODEL_PATH"), lambda: DEFAULT_CNN_MODEL_PATH
+        )
+        with _CNN_PREDICTOR_LOCK:
+            return _load_cnn_predictor(model_path)
     raise PredictorConfigurationError(
-        f"Mode de prédiction inconnu : {selected_mode!r}. Utilisez 'demo' ou 'spark'."
+        f"Mode de prédiction inconnu : {selected_mode!r}. "
+        "Utilisez 'demo', 'spark' ou 'cnn'."
     )
 
 
@@ -211,6 +255,38 @@ def _load_spark_predictor(
 ) -> SparkPredictor:
     _require_existing_model_paths(preprocessing_path, classifier_path)
     return _build_spark_predictor(preprocessing_path, classifier_path)
+
+
+@lru_cache(maxsize=4)
+def _load_cnn_predictor(model_path: str) -> CnnPredictor:
+    if not Path(model_path).is_file():
+        raise PredictorConfigurationError(
+            f"Artefact du modèle CNN introuvable : {model_path}"
+        )
+
+    try:
+        import torch
+
+        from postal_app.cnn_model import CNN_FORMAT_VERSION, DigitCNN
+
+        artifact = torch.load(model_path, map_location="cpu", weights_only=True)
+        if not isinstance(artifact, dict):
+            raise ValueError("CNN artifact must be a dictionary")
+        if artifact.get("format_version") != CNN_FORMAT_VERSION:
+            raise ValueError("unsupported CNN artifact version")
+        if artifact.get("input_shape") != [1, 28, 28]:
+            raise ValueError("unsupported CNN input shape")
+        model = DigitCNN()
+        model.load_state_dict(artifact["state_dict"])
+        model.eval()
+    except Exception as error:
+        logger.exception(
+            "Failed to initialize the CNN predictor from model=%s", model_path
+        )
+        raise PredictorConfigurationError(
+            "Impossible de charger l'artefact du modèle CNN."
+        ) from error
+    return CnnPredictor(model, torch)
 
 
 def analyze_digits(
